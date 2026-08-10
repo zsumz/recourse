@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+cd "$repo_root"
+
+artifact_tmp=$(mktemp -d)
+trap 'rm -rf -- "$artifact_tmp"' EXIT
+
+cargo run --quiet --locked -p dispatch-catalog >"$artifact_tmp/catalog.json"
+if ! cmp --silent diagnostics/catalog.json "$artifact_tmp/catalog.json"; then
+  echo "dispatch catalog drifted; regenerate diagnostics/catalog.json" >&2
+  diff -u diagnostics/catalog.json "$artifact_tmp/catalog.json" || true
+  exit 1
+fi
+
+cargo run --quiet --locked -p recourse-cli -- \
+  check \
+  --current diagnostics/catalog.json \
+  --lock diagnostics/catalog.lock \
+  --format json >"$artifact_tmp/check.json"
+
+cargo run --quiet --locked -p recourse-cli -- \
+  docs \
+  --current diagnostics/catalog.json \
+  --lock diagnostics/catalog.lock \
+  --out "$artifact_tmp/problems-a" \
+  --format json >"$artifact_tmp/docs-a.json"
+
+cargo run --quiet --locked -p recourse-cli -- \
+  docs \
+  --current diagnostics/catalog.json \
+  --lock diagnostics/catalog.lock \
+  --out "$artifact_tmp/problems-b" \
+  --format json >"$artifact_tmp/docs-b.json"
+
+if ! cmp --silent "$artifact_tmp/docs-a.json" "$artifact_tmp/docs-b.json" || \
+  ! diff -ru "$artifact_tmp/problems-a" "$artifact_tmp/problems-b"; then
+  echo "generated diagnostic pages are not deterministic" >&2
+  exit 1
+fi
