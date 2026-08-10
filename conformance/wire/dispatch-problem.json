@@ -1,0 +1,1 @@
+{"type":"https://dispatch.invalid/problems/DSP-1001","title":"Malformed request","status":400,"detail":"The request body is not valid JSON.","instance":"https://api.dispatch.invalid/problem-occurrences/canonical-problem-test","code":"DSP-1001","evidence":{},"suggestions":["Check the request body for invalid or incomplete JSON syntax.","Send the corrected request again."]}
