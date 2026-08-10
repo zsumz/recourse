@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+cd "$repo_root"
+
+fuzz_toolchain=nightly-2026-08-01
+seconds_per_target=${FUZZ_SECONDS_PER_TARGET:-60}
+
+for target in \
+  received_problem \
+  received_operation \
+  received_health \
+  catalog_artifact \
+  catalog_lock \
+  catalog_schema \
+  compatibility
+do
+  cargo +"$fuzz_toolchain" fuzz run "$target" -- \
+    -max_total_time="$seconds_per_target" \
+    -max_len=1048576
+done
+
+for target in code terminal_escape
+do
+  cargo +"$fuzz_toolchain" fuzz run "$target" -- \
+    -max_total_time="$seconds_per_target" \
+    -max_len=8192
+done
