@@ -1,0 +1,21 @@
+{
+  "profile": "recourse-0.0.1",
+  "rules": [
+    { "id": "REC-COMPAT-001", "severity": "forbidden" },
+    { "id": "REC-COMPAT-002", "severity": "forbidden" },
+    { "id": "REC-COMPAT-003", "severity": "forbidden" },
+    { "id": "REC-COMPAT-004", "severity": "compatible" },
+    { "id": "REC-COMPAT-005", "severity": "compatible" },
+    { "id": "REC-COMPAT-006", "severity": "breaking" },
+    { "id": "REC-COMPAT-007", "severity": "compatible" },
+    { "id": "REC-COMPAT-008", "severity": "compatible" },
+    { "id": "REC-COMPAT-009", "severity": "breaking" },
+    { "id": "REC-COMPAT-010", "severity": "breaking" },
+    { "id": "REC-COMPAT-011", "severity": "breaking" },
+    { "id": "REC-COMPAT-012", "severity": "compatible" },
+    { "id": "REC-COMPAT-013", "severity": "breaking" },
+    { "id": "REC-COMPAT-014", "severity": "breaking" },
+    { "id": "REC-COMPAT-015", "severity": "breaking" },
+    { "id": "REC-COMPAT-016", "severity": "breaking" }
+  ]
+}

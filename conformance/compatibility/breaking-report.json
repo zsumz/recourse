@@ -1,0 +1,14 @@
+{
+  "changes": [
+    {
+      "id": "REC-COMPAT-013",
+      "severity": "breaking",
+      "code": "DSP-1001",
+      "path": "evidence_schema.properties.trace_id",
+      "previous": "absent",
+      "current": "required",
+      "reason": "Existing emitters may not provide the new field.",
+      "action": "Make it optional or mint a new code."
+    }
+  ]
+}

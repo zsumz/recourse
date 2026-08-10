@@ -1,0 +1,14 @@
+{
+  "changes": [
+    {
+      "id": "REC-COMPAT-012",
+      "severity": "compatible",
+      "code": "DSP-1001",
+      "path": "evidence_schema.properties.trace_id",
+      "previous": "absent",
+      "current": "optional",
+      "reason": "Tolerant clients can ignore an optional field.",
+      "action": "Accept the field."
+    }
+  ]
+}
