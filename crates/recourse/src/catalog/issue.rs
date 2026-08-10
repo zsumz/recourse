@@ -1,0 +1,224 @@
+//! Aggregated catalog definition failures with precise ownership context.
+
+use std::{
+    error::Error,
+    fmt::{self, Display, Formatter},
+};
+
+use super::CodeNumber;
+
+/// One independently actionable catalog definition problem.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CatalogIssue {
+    /// Catalog name is not canonical lowercase kebab case.
+    InvalidName {
+        /// Rejected declaration.
+        value: String,
+    },
+    /// Catalog prefix is not a canonical code prefix.
+    InvalidPrefix {
+        /// Rejected declaration.
+        value: String,
+    },
+    /// Catalog type base is not an absolute URI ending in `/`.
+    InvalidTypeBase {
+        /// Rejected declaration.
+        value: String,
+    },
+    /// A required metadata field is empty or otherwise invalid.
+    InvalidMetadata {
+        /// Diagnostic number with invalid metadata.
+        number: CodeNumber,
+        /// Stable metadata field name.
+        field: &'static str,
+        /// Human-readable reason for the definition author.
+        reason: String,
+    },
+    /// Evidence schema is outside the supported deterministic profile.
+    UnsupportedEvidenceSchema {
+        /// Diagnostic number owning the evidence type.
+        number: CodeNumber,
+        /// JSON-pointer-like location within the schema.
+        path: String,
+        /// Human-readable reason for the definition author.
+        reason: String,
+    },
+    /// Operation impact schema is outside the supported deterministic profile.
+    UnsupportedImpactSchema {
+        /// Diagnostic number owning the impact type.
+        number: CodeNumber,
+        /// JSON-pointer-like location within the schema.
+        path: String,
+        /// Human-readable reason for the definition author.
+        reason: String,
+    },
+    /// Two different diagnostic marker types claim one permanent number.
+    DuplicateNumber {
+        /// Conflicting permanent number.
+        number: CodeNumber,
+    },
+    /// HTTP status is not a valid client- or server-error status.
+    InvalidHttpStatus {
+        /// Diagnostic number owning the policy.
+        number: CodeNumber,
+        /// Rejected status value.
+        status: u16,
+    },
+    /// A derived type URI is not a valid absolute URI.
+    InvalidTypeUri {
+        /// Diagnostic number whose URI could not be derived safely.
+        number: CodeNumber,
+        /// Rejected derived value.
+        value: String,
+    },
+    /// Problem-set operation ID is empty, unsafe, or too long.
+    InvalidProblemSetId {
+        /// Rejected operation ID.
+        value: String,
+    },
+    /// Two declarations claim the same stable API operation ID.
+    DuplicateProblemSetId {
+        /// Repeated operation ID.
+        id: String,
+    },
+    /// One problem set includes the same diagnostic more than once.
+    DuplicateProblemSetMember {
+        /// Owning operation ID.
+        problem_set: String,
+        /// Repeated diagnostic number.
+        number: CodeNumber,
+    },
+    /// A problem set includes a marker not registered on the HTTP surface.
+    UnregisteredProblemSetMember {
+        /// Owning operation ID.
+        problem_set: String,
+        /// Missing HTTP diagnostic number.
+        number: CodeNumber,
+    },
+}
+
+impl Display for CatalogIssue {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidName { value } => write!(formatter, "invalid catalog name {value:?}"),
+            Self::InvalidPrefix { value } => write!(formatter, "invalid catalog prefix {value:?}"),
+            Self::InvalidTypeBase { value } => write!(formatter, "invalid type base {value:?}"),
+            Self::InvalidMetadata {
+                number,
+                field,
+                reason,
+            } => invalid_metadata(formatter, *number, field, reason),
+            Self::UnsupportedEvidenceSchema {
+                number,
+                path,
+                reason,
+            } => unsupported_schema(formatter, *number, "evidence", path, reason),
+            Self::UnsupportedImpactSchema {
+                number,
+                path,
+                reason,
+            } => unsupported_schema(formatter, *number, "impact", path, reason),
+            Self::DuplicateNumber { number } => duplicate_number(formatter, *number),
+            Self::InvalidHttpStatus { number, status } => {
+                write!(
+                    formatter,
+                    "diagnostic {number} has invalid HTTP status {status}"
+                )
+            }
+            Self::InvalidTypeUri { number, value } => {
+                write!(
+                    formatter,
+                    "diagnostic {number} derives invalid type URI {value:?}"
+                )
+            }
+            Self::InvalidProblemSetId { value } => {
+                write!(formatter, "invalid problem-set operation ID {value:?}")
+            }
+            Self::DuplicateProblemSetId { id } => {
+                write!(
+                    formatter,
+                    "problem-set operation ID {id:?} is declared twice"
+                )
+            }
+            Self::DuplicateProblemSetMember {
+                problem_set,
+                number,
+            } => write!(
+                formatter,
+                "problem set {problem_set:?} includes diagnostic {number} twice"
+            ),
+            Self::UnregisteredProblemSetMember {
+                problem_set,
+                number,
+            } => write!(
+                formatter,
+                "problem set {problem_set:?} includes unregistered HTTP diagnostic {number}"
+            ),
+        }
+    }
+}
+
+fn invalid_metadata(
+    formatter: &mut Formatter<'_>,
+    number: CodeNumber,
+    field: &str,
+    reason: &str,
+) -> fmt::Result {
+    write!(
+        formatter,
+        "diagnostic {number} has invalid {field}: {reason}"
+    )
+}
+
+fn duplicate_number(formatter: &mut Formatter<'_>, number: CodeNumber) -> fmt::Result {
+    write!(
+        formatter,
+        "diagnostic number {number} is declared more than once"
+    )
+}
+
+fn unsupported_schema(
+    formatter: &mut Formatter<'_>,
+    number: CodeNumber,
+    surface: &str,
+    path: &str,
+    reason: &str,
+) -> fmt::Result {
+    write!(
+        formatter,
+        "diagnostic {number} has unsupported {surface} schema at {path}: {reason}"
+    )
+}
+
+/// All definition failures found during one catalog build.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CatalogBuildError {
+    issues: Vec<CatalogIssue>,
+}
+
+impl CatalogBuildError {
+    pub(crate) fn new(issues: Vec<CatalogIssue>) -> Self {
+        Self { issues }
+    }
+
+    /// Independently actionable issues in deterministic discovery order.
+    pub fn issues(&self) -> &[CatalogIssue] {
+        &self.issues
+    }
+}
+
+impl Display for CatalogBuildError {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
+        writeln!(
+            formatter,
+            "catalog construction found {} issue(s)",
+            self.issues.len()
+        )?;
+        for issue in &self.issues {
+            writeln!(formatter, "- {issue}")?;
+        }
+        Ok(())
+    }
+}
+
+impl Error for CatalogBuildError {}
