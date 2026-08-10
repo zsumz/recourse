@@ -1,0 +1,31 @@
+[package]
+name = "recourse-axum"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Axum integration for the Recourse governed diagnostics protocol"
+documentation = "https://docs.rs/recourse-axum"
+readme = "README.md"
+keywords = ["axum", "diagnostics", "problem-details", "errors", "middleware"]
+categories = ["web-programming", "web-programming::http-server"]
+
+[dependencies]
+axum.workspace = true
+futures-util.workspace = true
+http.workspace = true
+recourse.workspace = true
+tower.workspace = true
+ulid.workspace = true
+
+[dev-dependencies]
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+
+[lints]
+workspace = true
