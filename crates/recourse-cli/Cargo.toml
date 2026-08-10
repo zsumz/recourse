@@ -1,0 +1,25 @@
+[package]
+name = "recourse-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Cargo CLI for governing Recourse diagnostic catalogs"
+documentation = "https://docs.rs/recourse-cli"
+readme = "README.md"
+keywords = ["diagnostics", "catalog", "compatibility", "cli"]
+categories = ["command-line-utilities", "development-tools"]
+
+[[bin]]
+name = "cargo-recourse"
+path = "src/main.rs"
+
+[dependencies]
+recourse.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true
