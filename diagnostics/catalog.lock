@@ -1,0 +1,525 @@
+{
+  "schema_version": 1,
+  "catalog": {
+    "name": "dispatch",
+    "prefix": "DSP",
+    "type_base": "https://dispatch.invalid/problems/"
+  },
+  "entries": [
+    {
+      "state": "active",
+      "diagnostic": {
+        "number": 1001,
+        "code": "DSP-1001",
+        "type": "https://dispatch.invalid/problems/DSP-1001",
+        "title": "Malformed request",
+        "detail": "The request body is not valid JSON.",
+        "suggestions": [
+          "Check the request body for invalid or incomplete JSON syntax.",
+          "Send the corrected request again."
+        ],
+        "documentation_markdown": "# Malformed request\n\nDispatch could not parse the request body as JSON. This diagnostic concerns syntax or framing, not a syntactically valid value that violates an application rule.\n\nCorrect the JSON syntax and send the request again. Dispatch does not expose parser internals because they can contain request fragments.\n",
+        "evidence_schema": {
+          "type": "object"
+        },
+        "surfaces": {
+          "http": {
+            "status": 400,
+            "policy": "fixed",
+            "required_headers": []
+          }
+        }
+      }
+    },
+    {
+      "state": "active",
+      "diagnostic": {
+        "number": 1002,
+        "code": "DSP-1002",
+        "type": "https://dispatch.invalid/problems/DSP-1002",
+        "title": "Validation failed",
+        "detail": "The request contains values that Dispatch cannot accept.",
+        "suggestions": [
+          "Correct each violation listed in the evidence object.",
+          "Send the corrected request again."
+        ],
+        "documentation_markdown": "# Validation failed\n\nDispatch parsed the request, but one or more values violate the operation's input rules. The evidence object lists bounded, structured violations in request order.\n\nUse each violation's stable reason and source location to correct the request. Treat its detail as human guidance rather than a machine instruction.\n",
+        "evidence_schema": {
+          "$defs": {
+            "HeaderName": {
+              "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$",
+              "type": "string"
+            },
+            "JsonPointer": {
+              "pattern": "^(?:/(?:[^~]|~[01])*)*$",
+              "type": "string"
+            },
+            "ParameterName": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "PublicText": {
+              "maxLength": 1024,
+              "minLength": 1,
+              "type": "string"
+            },
+            "Violation": {
+              "properties": {
+                "detail": {
+                  "$ref": "#/$defs/PublicText"
+                },
+                "reason": {
+                  "$ref": "#/$defs/ViolationReason"
+                },
+                "source": {
+                  "$ref": "#/$defs/ViolationSource"
+                }
+              },
+              "required": [
+                "detail",
+                "reason",
+                "source"
+              ],
+              "type": "object"
+            },
+            "ViolationReason": {
+              "oneOf": [
+                {
+                  "const": "required",
+                  "type": "string"
+                },
+                {
+                  "const": "invalid_format",
+                  "type": "string"
+                },
+                {
+                  "const": "out_of_range",
+                  "type": "string"
+                },
+                {
+                  "const": "not_allowed",
+                  "type": "string"
+                },
+                {
+                  "const": "conflict",
+                  "type": "string"
+                }
+              ]
+            },
+            "ViolationSource": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "body": {
+                      "properties": {
+                        "pointer": {
+                          "$ref": "#/$defs/JsonPointer"
+                        }
+                      },
+                      "required": [
+                        "pointer"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "body"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "query": {
+                      "properties": {
+                        "parameter": {
+                          "$ref": "#/$defs/ParameterName"
+                        }
+                      },
+                      "required": [
+                        "parameter"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "query"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "header": {
+                      "properties": {
+                        "name": {
+                          "$ref": "#/$defs/HeaderName"
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "header"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "path": {
+                      "properties": {
+                        "parameter": {
+                          "$ref": "#/$defs/ParameterName"
+                        }
+                      },
+                      "required": [
+                        "parameter"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "path"
+                  ],
+                  "type": "object"
+                }
+              ]
+            }
+          },
+          "properties": {
+            "violations": {
+              "items": {
+                "$ref": "#/$defs/Violation"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "type": "array"
+            }
+          },
+          "required": [
+            "violations"
+          ],
+          "type": "object"
+        },
+        "surfaces": {
+          "http": {
+            "status": 422,
+            "policy": "fixed",
+            "required_headers": []
+          }
+        }
+      }
+    },
+    {
+      "state": "active",
+      "diagnostic": {
+        "number": 1003,
+        "code": "DSP-1003",
+        "type": "https://dispatch.invalid/problems/DSP-1003",
+        "title": "Job not found",
+        "detail": "No job exists for the supplied identifier.",
+        "suggestions": [
+          "Check the job identifier for transcription errors.",
+          "Create a job before requesting its status."
+        ],
+        "documentation_markdown": "# Job not found\n\nNo Dispatch job exists for the supplied job identifier. The evidence repeats only the validated public identifier used for the lookup.\n\nCheck the identifier. If it is correct, create the job before requesting its status.\n",
+        "evidence_schema": {
+          "$defs": {
+            "JobId": {
+              "pattern": "^job_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+              "type": "string"
+            }
+          },
+          "properties": {
+            "job_id": {
+              "$ref": "#/$defs/JobId"
+            }
+          },
+          "required": [
+            "job_id"
+          ],
+          "type": "object"
+        },
+        "surfaces": {
+          "http": {
+            "status": 404,
+            "policy": "fixed",
+            "required_headers": []
+          }
+        }
+      }
+    },
+    {
+      "state": "active",
+      "diagnostic": {
+        "number": 1004,
+        "code": "DSP-1004",
+        "type": "https://dispatch.invalid/problems/DSP-1004",
+        "title": "Idempotency key conflict",
+        "detail": "This idempotency key already identifies a job created from different inputs.",
+        "suggestions": [
+          "Repeat the original request unchanged to read its result.",
+          "Use a new idempotency key for different job inputs."
+        ],
+        "documentation_markdown": "# Idempotency key conflict\n\nThe idempotency key is already bound to a job created from different inputs. Dispatch preserves that first binding so retries cannot create divergent jobs.\n\nRepeat the original request unchanged to read its result, or use a new idempotency key for different inputs. The evidence identifies the original job.\n",
+        "evidence_schema": {
+          "$defs": {
+            "JobId": {
+              "pattern": "^job_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+              "type": "string"
+            }
+          },
+          "properties": {
+            "original_job_id": {
+              "$ref": "#/$defs/JobId"
+            }
+          },
+          "required": [
+            "original_job_id"
+          ],
+          "type": "object"
+        },
+        "surfaces": {
+          "http": {
+            "status": 409,
+            "policy": "fixed",
+            "required_headers": []
+          }
+        }
+      }
+    },
+    {
+      "state": "active",
+      "diagnostic": {
+        "number": 1005,
+        "code": "DSP-1005",
+        "type": "https://dispatch.invalid/problems/DSP-1005",
+        "title": "Authentication required",
+        "detail": "A valid bearer token is required for this request.",
+        "suggestions": [
+          "Send a bearer token issued for the Dispatch API.",
+          "Obtain a new token if the current token has expired."
+        ],
+        "documentation_markdown": "# Authentication required\n\nDispatch requires a bearer token for this operation. The response challenge describes the expected authentication scheme without exposing why a credential was rejected.\n\nSend a current token issued for the Dispatch API and use the response correlation ID when requesting operator support.\n",
+        "evidence_schema": {
+          "type": "object"
+        },
+        "surfaces": {
+          "http": {
+            "status": 401,
+            "policy": "unauthorized",
+            "required_headers": [
+              "www-authenticate"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "state": "active",
+      "diagnostic": {
+        "number": 1006,
+        "code": "DSP-1006",
+        "type": "https://dispatch.invalid/problems/DSP-1006",
+        "title": "Unsupported method",
+        "detail": "This resource does not support the request method.",
+        "suggestions": [
+          "Use one of the methods listed in the Allow response header."
+        ],
+        "documentation_markdown": "# Unsupported method\n\nThe selected resource does not implement the request method. The required `Allow` response header is constructed from typed method values and is the authority for supported alternatives.\n\nRepeat the request using one of the methods listed by `Allow`.\n",
+        "evidence_schema": {
+          "type": "object"
+        },
+        "surfaces": {
+          "http": {
+            "status": 405,
+            "policy": "method_not_allowed",
+            "required_headers": [
+              "allow"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "state": "active",
+      "diagnostic": {
+        "number": 1007,
+        "code": "DSP-1007",
+        "type": "https://dispatch.invalid/problems/DSP-1007",
+        "title": "Service temporarily unavailable",
+        "detail": "Dispatch cannot complete the request right now.",
+        "suggestions": [
+          "Wait for at least the delay in Retry-After before retrying.",
+          "Use exponential backoff if the condition continues."
+        ],
+        "documentation_markdown": "# Service temporarily unavailable\n\nDispatch cannot complete the request because a transient dependency or capacity condition is active. The required `Retry-After` response header supplies the minimum known delay.\n\nWait for that delay and retry with bounded exponential backoff.\n",
+        "evidence_schema": {
+          "type": "object"
+        },
+        "surfaces": {
+          "http": {
+            "status": 503,
+            "policy": "retry_after",
+            "required_headers": [
+              "retry-after"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "state": "active",
+      "diagnostic": {
+        "number": 1008,
+        "code": "DSP-1008",
+        "type": "https://dispatch.invalid/problems/DSP-1008",
+        "title": "Internal error",
+        "detail": "Dispatch could not complete the request.",
+        "suggestions": [
+          "Retry the request after a short delay.",
+          "Contact support with the response correlation ID if the problem continues."
+        ],
+        "documentation_markdown": "# Internal error\n\nDispatch encountered an unexpected private fault and returned a sanitized response. No source-error message or private context appears in public evidence.\n\nRetry after a short delay. If the failure continues, provide the response correlation ID to support so operators can locate the private report.\n",
+        "evidence_schema": {
+          "type": "object"
+        },
+        "surfaces": {
+          "http": {
+            "status": 500,
+            "policy": "fixed",
+            "required_headers": []
+          }
+        }
+      }
+    },
+    {
+      "state": "active",
+      "diagnostic": {
+        "number": 1009,
+        "code": "DSP-1009",
+        "type": "https://dispatch.invalid/problems/DSP-1009",
+        "title": "Job dispatch failed",
+        "detail": "The job was accepted but could not be dispatched.",
+        "suggestions": [
+          "Inspect the failed attempt.",
+          "Retry after correcting the destination configuration."
+        ],
+        "documentation_markdown": "# Job dispatch failed\n\nDispatch accepted the job, but a background dispatch attempt failed before the job completed. This durable diagnostic records the failed attempt separately from the successful HTTP acceptance response.\n\nInspect the public impact before retrying. The impact states whether the destination changed and whether any durable artifacts were created, so reconciliation does not depend on private worker error text.\n",
+        "evidence_schema": {
+          "$defs": {
+            "JobId": {
+              "pattern": "^job_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+              "type": "string"
+            }
+          },
+          "properties": {
+            "attempt": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "job_id": {
+              "$ref": "#/$defs/JobId"
+            }
+          },
+          "required": [
+            "attempt",
+            "job_id"
+          ],
+          "type": "object"
+        },
+        "surfaces": {
+          "operation": {
+            "impact_schema": {
+              "properties": {
+                "created_artifacts": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "destination_changed": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "created_artifacts",
+                "destination_changed"
+              ],
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    {
+      "state": "active",
+      "diagnostic": {
+        "number": 1010,
+        "code": "DSP-1010",
+        "type": "https://dispatch.invalid/problems/DSP-1010",
+        "title": "Job queue unavailable",
+        "detail": "The worker cannot currently reach the job queue.",
+        "suggestions": [
+          "Check queue connectivity.",
+          "Verify credentials and network policy."
+        ],
+        "documentation_markdown": "# Job queue unavailable\n\nDispatch cannot currently reach the durable job queue. The same permanent identity can reject a request with `Retry-After` and describe the current service state as a health finding.\n\nCheck queue connectivity, credentials, and network policy. Treat the consecutive failure count as public evidence of the observed condition, not as a retry policy.\n",
+        "evidence_schema": {
+          "properties": {
+            "consecutive_failures": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "consecutive_failures"
+          ],
+          "type": "object"
+        },
+        "surfaces": {
+          "http": {
+            "status": 503,
+            "policy": "retry_after",
+            "required_headers": [
+              "retry-after"
+            ]
+          },
+          "health": {}
+        }
+      }
+    },
+    {
+      "state": "active",
+      "diagnostic": {
+        "number": 1011,
+        "code": "DSP-1011",
+        "type": "https://dispatch.invalid/problems/DSP-1011",
+        "title": "Unsupported media type",
+        "detail": "This operation accepts application/json requests.",
+        "suggestions": [
+          "Encode the request body as JSON.",
+          "Set Content-Type to application/json."
+        ],
+        "documentation_markdown": "# Unsupported media type\n\nThe operation accepts JSON, but the request declared another representation. Dispatch rejects the representation before interpreting it as application input.\n\nEncode the request body as JSON and send `Content-Type: application/json`.\n",
+        "evidence_schema": {
+          "type": "object"
+        },
+        "surfaces": {
+          "http": {
+            "status": 415,
+            "policy": "fixed",
+            "required_headers": []
+          }
+        }
+      }
+    }
+  ]
+}
