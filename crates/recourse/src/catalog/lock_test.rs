@@ -1,0 +1,105 @@
+//! Exact catalog-lock fixture, bounded parser, and reservation lifecycle tests.
+
+use crate::{
+    diagnostic::{DiagnosticType, NoEvidence},
+    http::{Fixed, HttpProblemType},
+};
+
+use super::{
+    Catalog, CatalogLock, CatalogSpec, CodeNumber, LockState, Reservation, ReservationError,
+};
+
+enum DispatchCatalog {}
+
+impl CatalogSpec for DispatchCatalog {
+    const NAME: &'static str = "dispatch";
+    const PREFIX: &'static str = "DSP";
+    const TYPE_BASE: &'static str = "https://dispatch.invalid/problems/";
+}
+
+enum JobNotFound {}
+
+impl DiagnosticType for JobNotFound {
+    type Catalog = DispatchCatalog;
+    type Evidence = NoEvidence;
+
+    const NUMBER: CodeNumber = CodeNumber::new(1003);
+    const TITLE: &'static str = "Job not found";
+    const DETAIL: &'static str = "No job exists for the supplied identifier.";
+    const SUGGESTIONS: &'static [&'static str] = &[];
+    const DOCS: &'static str = "Check the supplied job identifier.";
+}
+
+impl HttpProblemType for JobNotFound {
+    type Policy = Fixed<404>;
+}
+
+fn lock() -> CatalogLock {
+    let artifact = Catalog::<DispatchCatalog>::builder()
+        .problem::<JobNotFound>()
+        .build()
+        .unwrap_or_else(|error| panic!("fixture catalog must build: {error}"))
+        .artifact();
+    CatalogLock::from_artifact(&artifact)
+}
+
+#[test]
+fn initial_lock_matches_exact_fixture_and_round_trips() {
+    let lock = lock();
+    let mut body = Vec::new();
+    assert!(lock.write_pretty(&mut body).is_ok());
+
+    assert_eq!(body, include_bytes!("lock_test_fixture.json"));
+    assert_eq!(CatalogLock::from_slice(&body).ok(), Some(lock));
+}
+
+#[test]
+fn reservations_never_reuse_history_or_scan_back_into_gaps() {
+    let mut lock = lock();
+    let gap = lock
+        .reserve(Reservation::Exact(CodeNumber::new(1001)))
+        .unwrap_or_else(|error| panic!("unused explicit number must reserve: {error}"));
+    assert_eq!(gap.code().to_string(), "DSP-1001");
+    let next = lock
+        .reserve(Reservation::Next)
+        .unwrap_or_else(|error| panic!("next number must reserve: {error}"));
+    assert_eq!(next.code().to_string(), "DSP-1004");
+
+    assert_eq!(
+        lock.reserve(Reservation::Exact(CodeNumber::new(1003))),
+        Err(ReservationError::AlreadyUsed {
+            number: CodeNumber::new(1003)
+        })
+    );
+}
+
+#[test]
+fn a_retired_entry_remains_a_valid_permanent_tombstone() {
+    let mut value = serde_json::to_value(lock())
+        .unwrap_or_else(|error| panic!("fixture lock must encode: {error}"));
+    value["entries"][0]["state"] = serde_json::json!("retired");
+    value["entries"][0]["reason"] = serde_json::json!("The resource no longer exists.");
+    let body = serde_json::to_vec(&value)
+        .unwrap_or_else(|error| panic!("retired fixture must encode: {error}"));
+    let mut retired = CatalogLock::from_slice(&body)
+        .unwrap_or_else(|error| panic!("retired lock must parse: {error}"));
+
+    assert_eq!(retired.entries()[0].state(), LockState::Retired);
+    assert!(matches!(
+        retired.reserve(Reservation::Exact(CodeNumber::new(1003))),
+        Err(ReservationError::AlreadyUsed { .. })
+    ));
+}
+
+#[test]
+fn parser_rejects_identity_drift_inside_a_reservation() {
+    let mut lock = lock();
+    assert!(lock.reserve(Reservation::Next).is_ok());
+    let mut value = serde_json::to_value(lock)
+        .unwrap_or_else(|error| panic!("fixture lock must encode: {error}"));
+    value["entries"][1]["type"] = serde_json::json!("https://attacker.invalid/DSP-1004");
+    let body = serde_json::to_vec(&value)
+        .unwrap_or_else(|error| panic!("mutated lock must encode: {error}"));
+
+    assert!(CatalogLock::from_slice(&body).is_err());
+}

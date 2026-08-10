@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "catalog": {
+    "name": "dispatch",
+    "prefix": "DSP",
+    "type_base": "https://dispatch.invalid/problems/"
+  },
+  "entries": [
+    {
+      "state": "active",
+      "diagnostic": {
+        "number": 1003,
+        "code": "DSP-1003",
+        "type": "https://dispatch.invalid/problems/DSP-1003",
+        "title": "Job not found",
+        "detail": "No job exists for the supplied identifier.",
+        "suggestions": [],
+        "documentation_markdown": "Check the supplied job identifier.",
+        "evidence_schema": {
+          "type": "object"
+        },
+        "surfaces": {
+          "http": {
+            "status": 404,
+            "policy": "fixed",
+            "required_headers": []
+          }
+        }
+      }
+    }
+  ]
+}
