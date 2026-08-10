@@ -1,0 +1,9 @@
+{
+  "type": 17,
+  "title": ["not", "display", "text"],
+  "status": "500",
+  "code": {"prefix": "DSP", "number": 1003},
+  "evidence": ["not", "an", "object"],
+  "suggestions": ["kept", 42, {"future": true}],
+  "unknown": {"still": "present"}
+}

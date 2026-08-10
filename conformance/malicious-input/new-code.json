@@ -1,0 +1,13 @@
+{
+  "type": "https://dispatch.invalid/problems/DSP-1999",
+  "title": "\u001b[31mFuture failure\u001b[0m",
+  "detail": "first\n\u202esecond",
+  "status": 502,
+  "code": "DSP-1999",
+  "evidence": {
+    "future": {
+      "nested": [1, 2, 3]
+    }
+  },
+  "vendor": "kept"
+}

@@ -1,0 +1,8 @@
+{
+  "type": "https://future.invalid/problems/FUT-9",
+  "title": "\u001b]8;;https://attacker.invalid\u001b\\click\u001b]8;;\u001b\\",
+  "detail": "safe\u0000\u009b31m\u202erorrim\u2066isolate\u2069",
+  "status": 500,
+  "code": "FUT-9",
+  "evidence": {}
+}
