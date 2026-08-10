@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+cd "$repo_root"
+
+fuzz_toolchain=nightly-2026-08-01
+cargo +"$fuzz_toolchain" fetch --manifest-path fuzz/Cargo.toml --locked
+cargo +"$fuzz_toolchain" clippy --manifest-path fuzz/Cargo.toml --all-targets --locked -- -D warnings
+for target in \
+  received_problem \
+  received_operation \
+  received_health \
+  catalog_artifact \
+  catalog_lock \
+  catalog_schema \
+  compatibility
+do
+  cargo +"$fuzz_toolchain" fuzz run "$target" -- -runs=128 -max_len=131072
+done
+cargo +"$fuzz_toolchain" fuzz run code -- -runs=128 -max_len=4096
+cargo +"$fuzz_toolchain" fuzz run terminal_escape -- -runs=128 -max_len=8192

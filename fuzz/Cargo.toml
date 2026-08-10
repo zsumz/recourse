@@ -1,0 +1,81 @@
+[package]
+name = "recourse-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+rust-version = "1.96"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+http = "1.3"
+libfuzzer-sys = "0.4"
+recourse = { path = "../crates/recourse" }
+serde_json = "1.0"
+
+[[bin]]
+name = "received_problem"
+path = "fuzz_targets/received_problem.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "terminal_escape"
+path = "fuzz_targets/terminal_escape.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "received_operation"
+path = "fuzz_targets/received_operation.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "received_health"
+path = "fuzz_targets/received_health.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "code"
+path = "fuzz_targets/code.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "catalog_artifact"
+path = "fuzz_targets/catalog_artifact.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "catalog_lock"
+path = "fuzz_targets/catalog_lock.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "catalog_schema"
+path = "fuzz_targets/catalog_schema.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "compatibility"
+path = "fuzz_targets/compatibility.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]
+members = ["."]
