@@ -1,0 +1,1 @@
+{"id":"dia_01KTEST","type":"https://operation.invalid/problems/OPT-1009","code":"OPT-1009","title":"Job dispatch failed","detail":"The accepted job could not be dispatched.","evidence":{"attempt":3},"impact":{"created_artifacts":2,"destination_changed":false},"suggestions":["Inspect the failed attempt."]}

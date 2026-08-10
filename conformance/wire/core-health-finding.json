@@ -1,0 +1,1 @@
+{"id":"finding_01KTEST","type":"https://health.invalid/problems/HLT-1010","code":"HLT-1010","title":"Job queue unavailable","detail":"The worker cannot currently reach the job queue.","severity":"unhealthy","observed_at":"2026-08-10T14:31:00Z","evidence":{"consecutive_failures":3},"suggestions":["Check queue connectivity."]}
