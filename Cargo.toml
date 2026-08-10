@@ -1,0 +1,67 @@
+[workspace]
+members = [
+  "crates/recourse",
+  "crates/recourse-axum",
+  "crates/recourse-cli",
+  "reference/dispatch-api-axum",
+  "reference/dispatch-catalog",
+  "reference/dispatch-cli",
+  "reference/dispatch-diagnostics",
+  "reference/dispatch-model",
+  "reference/dispatch-service",
+  "reference/dispatch-worker",
+]
+resolver = "3"
+
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
+rust-version = "1.96"
+authors = ["zsumz <shawn@zsumz.com>"]
+license = "MIT"
+repository = "https://github.com/zsumz/recourse"
+homepage = "https://github.com/zsumz/recourse"
+
+[workspace.dependencies]
+axum = "0.8"
+dispatch-diagnostics = { path = "reference/dispatch-diagnostics" }
+dispatch-model = { path = "reference/dispatch-model" }
+dispatch-service = { path = "reference/dispatch-service" }
+dispatch-worker = { path = "reference/dispatch-worker" }
+futures-util = "0.3"
+http = "1.3"
+httpdate = "1.0"
+recourse = { version = "0.0.1", path = "crates/recourse" }
+recourse-axum = { version = "0.0.1", path = "crates/recourse-axum" }
+schemars = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+syn = { version = "2.0", features = ["full", "visit"] }
+tokio = { version = "1.47", features = ["macros", "net", "rt-multi-thread"] }
+time = { version = "0.3.55", features = ["formatting", "parsing"] }
+toml = "0.8"
+tower = { version = "0.5", features = ["util"] }
+ulid = "1.2"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+missing_docs = "warn"
+unreachable_pub = "warn"
+unused_lifetimes = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+cognitive_complexity = "warn"
+dbg_macro = "deny"
+expect_used = "deny"
+todo = "deny"
+too_many_lines = "warn"
+unimplemented = "deny"
+unwrap_used = "deny"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+similar_names = "allow"
