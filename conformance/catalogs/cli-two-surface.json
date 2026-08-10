@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "catalog": {
+    "name": "dispatch",
+    "prefix": "DSP",
+    "type_base": "https://dispatch.invalid/problems/"
+  },
+  "diagnostics": [
+    {
+      "number": 1004,
+      "code": "DSP-1004",
+      "type": "https://dispatch.invalid/problems/DSP-1004",
+      "title": "Idempotency key conflict",
+      "detail": "This idempotency key already identifies a job created from different inputs.",
+      "suggestions": [
+        "Repeat the original request unchanged.",
+        "Use a new key for different inputs."
+      ],
+      "documentation_markdown": "The evidence identifies the original job.",
+      "evidence_schema": {
+        "$defs": {
+          "JobId": {
+            "pattern": "^job_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+            "type": "string"
+          }
+        },
+        "properties": {
+          "original_job_id": {
+            "$ref": "#/$defs/JobId"
+          }
+        },
+        "required": [
+          "original_job_id"
+        ],
+        "type": "object"
+      },
+      "surfaces": {
+        "http": {
+          "status": 409,
+          "policy": "fixed",
+          "required_headers": []
+        }
+      }
+    },
+    {
+      "number": 1009,
+      "code": "DSP-1009",
+      "type": "https://dispatch.invalid/problems/DSP-1009",
+      "title": "Job dispatch failed",
+      "detail": "The accepted job could not be dispatched.",
+      "suggestions": [
+        "Inspect the failed attempt."
+      ],
+      "documentation_markdown": "Inspect the public impact before retrying.",
+      "evidence_schema": {
+        "properties": {
+          "attempt": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "attempt"
+        ],
+        "type": "object"
+      },
+      "surfaces": {
+        "operation": {
+          "impact_schema": {
+            "properties": {
+              "created_artifacts": {
+                "format": "uint32",
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "created_artifacts"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    }
+  ],
+  "problem_sets": {
+    "createJob": [
+      "DSP-1004"
+    ]
+  }
+}
