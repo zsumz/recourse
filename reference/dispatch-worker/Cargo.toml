@@ -1,0 +1,17 @@
+[package]
+name = "dispatch-worker"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+dispatch-diagnostics.workspace = true
+dispatch-model.workspace = true
+dispatch-service.workspace = true
+recourse.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true
