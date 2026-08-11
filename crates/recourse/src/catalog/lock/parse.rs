@@ -7,7 +7,10 @@ use crate::{
     client::{DecodeLimits, decode_object},
 };
 
-use super::{CatalogLock, LockEntry, LockParseError, LockState};
+use super::{
+    CatalogLock, LockEntry, LockParseError,
+    replacement::{self, ReplacementIssue},
+};
 
 const MAX_LOCK_BYTES: usize = 16 * 1024 * 1024;
 
@@ -36,7 +39,8 @@ fn validate(lock: &CatalogLock) -> Result<(), LockParseError> {
         }
     }
     validate_definitions(lock)?;
-    validate_entries(lock)
+    validate_entries(lock)?;
+    validate_replacements(lock)
 }
 
 fn validate_definitions(lock: &CatalogLock) -> Result<(), LockParseError> {
@@ -62,18 +66,10 @@ fn validate_definitions(lock: &CatalogLock) -> Result<(), LockParseError> {
 fn validate_entries(lock: &CatalogLock) -> Result<(), LockParseError> {
     for entry in &lock.entries {
         validate_identity(lock, entry)?;
-        if let LockEntry::Retired {
-            reason,
-            replacement,
-            ..
-        } = entry
+        if let LockEntry::Retired { reason, .. } = entry
+            && reason.trim().is_empty()
         {
-            if reason.trim().is_empty() {
-                return invalid(&entry_path(entry), "retirement reason must be nonempty");
-            }
-            if let Some(code) = replacement {
-                validate_replacement(lock, entry, code)?;
-            }
+            return invalid(&entry_path(entry), "retirement reason must be nonempty");
         }
     }
     Ok(())
@@ -94,25 +90,21 @@ fn validate_identity(lock: &CatalogLock, entry: &LockEntry) -> Result<(), LockPa
     Ok(())
 }
 
-fn validate_replacement(
-    lock: &CatalogLock,
-    entry: &LockEntry,
-    replacement: &Code,
-) -> Result<(), LockParseError> {
-    if replacement == entry.code() {
-        return invalid(&entry_path(entry), "retired code cannot replace itself");
+fn validate_replacements(lock: &CatalogLock) -> Result<(), LockParseError> {
+    match replacement::validate(lock) {
+        Ok(()) => Ok(()),
+        Err(ReplacementIssue::MissingOrReserved {
+            source,
+            replacement,
+        }) => invalid(
+            &format!("entries.{source}"),
+            &format!("replacement {replacement} must identify an existing active or retired entry"),
+        ),
+        Err(ReplacementIssue::Cycle { code }) => invalid(
+            &format!("entries.{code}"),
+            "replacement chains must be acyclic",
+        ),
     }
-    let exists = lock
-        .entries
-        .iter()
-        .any(|candidate| candidate.code() == replacement && candidate.state() == LockState::Active);
-    if !exists {
-        return invalid(
-            &entry_path(entry),
-            "replacement must identify an active lock entry",
-        );
-    }
-    Ok(())
 }
 
 fn entry_path(entry: &LockEntry) -> String {

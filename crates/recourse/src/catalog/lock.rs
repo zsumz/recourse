@@ -6,6 +6,7 @@ mod entry;
 mod error;
 mod lifecycle;
 mod parse;
+mod replacement;
 
 use std::io::Write;
 

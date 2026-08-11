@@ -5,6 +5,7 @@ use crate::catalog::{CatalogArtifact, Code};
 use super::{
     AcceptanceError, CatalogLock, CompatibilityReport, LockEntry, LockState, RetirementError,
     compatibility,
+    replacement::{self, ReplacementIssue},
 };
 
 /// Whether catalog acceptance may record acknowledged breaking changes.
@@ -57,7 +58,9 @@ pub(super) fn retire<'a>(
         .iter()
         .position(|entry| entry.code() == code)
         .ok_or_else(|| RetirementError::UnknownCode { code: code.clone() })?;
-    validate_replacement(lock, code, replacement.as_ref())?;
+    if replacement.as_ref() == Some(code) {
+        return Err(RetirementError::InvalidReplacement { code: code.clone() });
+    }
     let state = lock.entries[index].state();
     let Some(diagnostic) = lock.entries[index].diagnostic().cloned() else {
         return Err(RetirementError::NotActive {
@@ -71,30 +74,24 @@ pub(super) fn retire<'a>(
             state,
         });
     }
-    lock.entries[index] = LockEntry::Retired {
+    let retired = LockEntry::Retired {
         diagnostic,
         reason,
         replacement,
     };
+    let previous = std::mem::replace(&mut lock.entries[index], retired);
+    if let Err(issue) = replacement::validate(lock) {
+        lock.entries[index] = previous;
+        return Err(retirement_error(issue));
+    }
     Ok(&lock.entries[index])
 }
 
-fn validate_replacement(
-    lock: &CatalogLock,
-    retiring: &Code,
-    replacement: Option<&Code>,
-) -> Result<(), RetirementError> {
-    let Some(replacement) = replacement else {
-        return Ok(());
-    };
-    let active = lock
-        .entries
-        .iter()
-        .any(|entry| entry.code() == replacement && entry.state() == LockState::Active);
-    if replacement == retiring || !active {
-        return Err(RetirementError::InvalidReplacement {
-            code: replacement.clone(),
-        });
+fn retirement_error(issue: ReplacementIssue) -> RetirementError {
+    match issue {
+        ReplacementIssue::MissingOrReserved { replacement, .. } => {
+            RetirementError::InvalidReplacement { code: replacement }
+        }
+        ReplacementIssue::Cycle { code } => RetirementError::ReplacementCycle { code },
     }
-    Ok(())
 }

@@ -40,7 +40,7 @@ pub enum LockEntry {
         diagnostic: CatalogDiagnostic,
         /// Human-authored reason for retirement.
         reason: String,
-        /// Optional active replacement identity.
+        /// Optional active or retired replacement identity.
         #[serde(skip_serializing_if = "Option::is_none")]
         replacement: Option<Code>,
     },

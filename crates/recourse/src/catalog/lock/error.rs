@@ -157,9 +157,14 @@ pub enum RetirementError {
     },
     /// Retirement rationale was empty or whitespace-only.
     EmptyReason,
-    /// Replacement was the retiring code or was not active.
+    /// Replacement was the retiring code, absent, or only reserved.
     InvalidReplacement {
         /// Rejected replacement code.
+        code: Code,
+    },
+    /// The retirement would introduce a replacement cycle.
+    ReplacementCycle {
+        /// Code participating in the rejected cycle.
         code: Code,
     },
 }
@@ -175,8 +180,11 @@ impl Display for RetirementError {
             Self::InvalidReplacement { code } => {
                 write!(
                     formatter,
-                    "replacement {code} is not another active diagnostic"
+                    "replacement {code} is not another active or retired diagnostic"
                 )
+            }
+            Self::ReplacementCycle { code } => {
+                write!(formatter, "replacement chain containing {code} would cycle")
             }
         }
     }
