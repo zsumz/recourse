@@ -27,6 +27,31 @@ pub trait HttpObserver: Send + Sync + 'static {
 /// Implementations run synchronously on the request lifecycle and must be
 /// fast, nonblocking, nonpanicking, and internally bounded. Prefer a nonblocking
 /// send into an application-owned bounded channel when reporting elsewhere.
+///
+/// A runtime-neutral reporter can hand an owned record to a bounded worker
+/// without waiting on the request path:
+///
+/// ```
+/// use std::sync::mpsc::SyncSender;
+///
+/// use recourse::{
+///     fault::PrivateReport,
+///     observe::{FaultEvent, FaultReporter},
+/// };
+///
+/// #[derive(Debug)]
+/// struct BoundedReporter(SyncSender<(String, String)>);
+///
+/// impl FaultReporter for BoundedReporter {
+///     fn report_fault(&self, event: &FaultEvent, report: &PrivateReport) {
+///         let record = (
+///             event.problem_metadata().code().to_string(),
+///             report.to_string(),
+///         );
+///         let _dropped_or_closed = self.0.try_send(record).is_err();
+///     }
+/// }
+/// ```
 pub trait FaultReporter: Send + Sync + 'static {
     /// Reports one private error with the same bounded metadata sent to observers.
     fn report_fault(&self, event: &FaultEvent, report: &PrivateReport);
