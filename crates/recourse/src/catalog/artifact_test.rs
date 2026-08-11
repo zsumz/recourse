@@ -32,6 +32,23 @@ impl HttpProblemType for JobNotFound {
     type Policy = Fixed<404>;
 }
 
+enum CheckoutStableDocumentation {}
+
+impl DiagnosticType for CheckoutStableDocumentation {
+    type Catalog = DispatchCatalog;
+    type Evidence = NoEvidence;
+
+    const NUMBER: CodeNumber = CodeNumber::new(1004);
+    const TITLE: &'static str = "Checkout-stable documentation";
+    const DETAIL: &'static str = "Catalog documentation has canonical line endings.";
+    const SUGGESTIONS: &'static [&'static str] = &[];
+    const DOCS: &'static str = "First paragraph.\r\n\r\nSecond paragraph.\r";
+}
+
+impl HttpProblemType for CheckoutStableDocumentation {
+    type Policy = Fixed<500>;
+}
+
 #[test]
 fn pretty_artifact_matches_the_canonical_wire_fixture() {
     let catalog = Catalog::<DispatchCatalog>::builder()
@@ -78,4 +95,19 @@ fn pretty_artifact_matches_the_canonical_wire_fixture() {
 "#;
 
     assert!(matches!(output, Ok(value) if value == expected));
+}
+
+#[test]
+fn authored_markdown_has_platform_neutral_line_endings() {
+    let catalog = Catalog::<DispatchCatalog>::builder()
+        .problem::<CheckoutStableDocumentation>()
+        .build();
+    let Some(catalog) = catalog.ok() else {
+        return;
+    };
+
+    assert_eq!(
+        catalog.artifact().diagnostics()[0].documentation_markdown(),
+        "First paragraph.\n\nSecond paragraph.\n"
+    );
 }

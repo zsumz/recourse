@@ -29,9 +29,13 @@ impl From<DiagnosticArtifactParts> for CatalogDiagnostic {
             title: parts.title.to_owned(),
             detail: parts.detail.to_owned(),
             suggestions: parts.suggestions.iter().map(ToString::to_string).collect(),
-            documentation_markdown: parts.docs.to_owned(),
+            documentation_markdown: normalize_markdown(parts.docs),
             evidence_schema: parts.evidence_schema,
             surfaces: DiagnosticSurfaces::new(parts.http, parts.operation, parts.health),
         }
     }
+}
+
+fn normalize_markdown(markdown: &str) -> String {
+    markdown.replace("\r\n", "\n").replace('\r', "\n")
 }
