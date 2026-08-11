@@ -2,13 +2,13 @@ import { expect, smoke } from "smoque";
 
 const PRIVATE_CANARY = "postgres://private-ballast-token";
 
-smoke.suite("packaged Ballast consumer", { tags: ["package", "http"] }, async (t) => {
+smoke.suite("packaged external consumer", { tags: ["package", "http"] }, async (t) => {
   const root = t.repoRoot();
   const core = t.env.path("RECOURSE_CORE_PACKAGE", { required: true });
   const axum = t.env.path("RECOURSE_AXUM_PACKAGE", { required: true });
   const target = t.env.path("RECOURSE_PACKAGE_TARGET", { required: true });
   const work = await t.tempDir("recourse-package-consumer");
-  const consumer = work.path("ballast-consumer");
+  const consumer = work.path("consumer");
 
   await t.step("prepare extracted-package consumer", async () => {
     await t.fs.copy(root.path("smoke/ballast-consumer"), consumer);
@@ -19,7 +19,7 @@ smoke.suite("packaged Ballast consumer", { tags: ["package", "http"] }, async (t
     await t.fs.writeText(`${consumer}/Cargo.toml`, manifest);
   });
 
-  const port = await t.ports.reserve("ballast-consumer");
+  const port = await t.ports.reserve("packaged-consumer");
   const service = await t.step("start packaged Axum service", async () => {
     return await t.process.start(
       "cargo",
@@ -27,7 +27,7 @@ smoke.suite("packaged Ballast consumer", { tags: ["package", "http"] }, async (t
       {
         cwd: root,
         env: t.ports.env({ CARGO_TARGET_DIR: target.toString(), PORT: port }),
-        name: "packaged-ballast-consumer",
+        name: "packaged-consumer",
         ready: t.http.ready(port.url("/ready")),
         timeout: "5m",
       },
@@ -77,12 +77,14 @@ smoke.suite("packaged Ballast consumer", { tags: ["package", "http"] }, async (t
 });
 
 smoke.suite("installed Recourse CLI", { tags: ["package", "cli"] }, async (t) => {
+  const root = t.repoRoot();
   const core = t.env.path("RECOURSE_CORE_PACKAGE", { required: true });
   const cli = t.env.path("RECOURSE_CLI_PACKAGE", { required: true });
   const target = t.env.path("RECOURSE_PACKAGE_TARGET", { required: true });
   const version = t.env.string("RECOURSE_RELEASE_VERSION", { required: true });
   const work = await t.tempDir("recourse-cli-install");
   const install = work.path("install");
+  const executable = `${install}/bin/cargo-recourse`;
 
   await t.step("install extracted CLI package", async () => {
     await t.cmd(
@@ -100,7 +102,56 @@ smoke.suite("installed Recourse CLI", { tags: ["package", "cli"] }, async (t) =>
   });
 
   await t.step("installed binary reports release identity", async () => {
-    const result = await t.cmd(`${install}/bin/cargo-recourse`, ["--version"]);
+    const result = await t.cmd(executable, ["--version"]);
     expect.value(result.stdout.trim()).toBe(`cargo-recourse ${version}`);
+  });
+
+  await t.step("README compatibility failure remains exact", async () => {
+    type EvidenceSchema = {
+      properties: Record<string, unknown>;
+      required: string[];
+    };
+    type CatalogArtifact = {
+      diagnostics: Array<{
+        code: string;
+        evidence_schema: EvidenceSchema;
+      }>;
+    };
+
+    const artifact = JSON.parse(
+      await t.fs.readText(root.path("diagnostics/catalog.json")),
+    ) as CatalogArtifact;
+    const diagnostic = artifact.diagnostics.find(({ code }) => code === "DSP-1003");
+    if (diagnostic === undefined) {
+      t.fail("README diagnostic DSP-1003 is missing from the catalog");
+    }
+    diagnostic.evidence_schema.properties.trace_id = { type: "string" };
+    diagnostic.evidence_schema.required.push("trace_id");
+
+    const current = work.path("catalog.json");
+    const lock = work.path("catalog.lock");
+    await t.fs.writeJson(current, artifact);
+    await t.fs.copy(root.path("diagnostics/catalog.lock"), lock);
+
+    const result = await t.cmd(
+      executable,
+      [
+        "check",
+        "--current", current.toString(),
+        "--lock", lock.toString(),
+      ],
+      { check: false },
+    );
+
+    expect.value(result.exitCode).toBe(1);
+    expect.value(result.stdout.trim()).toBe(
+      `error[REC-COMPAT-013]: Existing emitters may not provide the new field.
+  diagnostic  DSP-1003
+  path        evidence_schema.properties.trace_id
+  previous    absent
+  current     required
+
+Make it optional or mint a new code.`,
+    );
   });
 });
