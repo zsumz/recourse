@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-tag=${1:?usage: scripts/verify-release-tag <tag>}
+candidate=${1:?usage: scripts/verify-release-tag <candidate> <tag> <fingerprint>}
+tag=${2:?usage: scripts/verify-release-tag <candidate> <tag> <fingerprint>}
+expected_fingerprint=${3:?usage: scripts/verify-release-tag <candidate> <tag> <fingerprint>}
 expected_identity='zsumz <shawn@zsumz.com>'
+if [[ ! "$expected_fingerprint" =~ ^[0-9A-F]{40}$ ]]; then
+  echo "expected release fingerprint must be 40 uppercase hexadecimal characters" >&2
+  exit 1
+fi
+cd "$candidate"
 release_version=$(awk -F '"' '/^version = / { print $2; exit }' release.toml)
 
 if [[ "$tag" != "v$release_version" ]]; then
@@ -19,9 +26,26 @@ if [[ "$tagger" != "$expected_identity" ]]; then
   exit 1
 fi
 
-git verify-tag "$tag"
+verify_fingerprint() {
+  local kind=$1
+  local object=$2
+  local status
+  status=$(git "verify-$kind" --raw "$object" 2>&1) || {
+    printf '%s\n' "$status" >&2
+    return 1
+  }
+  printf '%s\n' "$status"
+  local actual
+  actual=$(awk '$1 == "[GNUPG:]" && $2 == "VALIDSIG" { print $NF }' <<<"$status")
+  if [[ "$actual" != "$expected_fingerprint" ]]; then
+    echo "$kind $object was not signed by the trusted release fingerprint" >&2
+    return 1
+  fi
+}
+
+verify_fingerprint tag "$tag"
 commit=$(git rev-list -n 1 "$tag")
-git verify-commit "$commit"
+verify_fingerprint commit "$commit"
 if [[ $(git show -s --format='%an <%ae>' "$commit") != "$expected_identity" ]]; then
   echo "$tag must point to a commit authored by $expected_identity" >&2
   exit 1

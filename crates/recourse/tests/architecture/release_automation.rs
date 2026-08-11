@@ -16,8 +16,15 @@ fn signed_tags_verify_published_packages_before_github_release() {
 
     for required in [
         "workflow_dispatch:",
+        "if: github.ref == 'refs/heads/main'",
+        "ref: ${{ github.sha }}",
+        "path: trusted",
         "ref: ${{ inputs.tag }}",
-        "scripts/verify-release-tag",
+        "path: candidate",
+        "RECOURSE_RELEASE_FINGERPRINT: B58439871CD2A7275B20CC19EC8E4D26598A0373",
+        "../trusted/etc/release-signing-key.asc",
+        "../trusted/scripts/verify-release-tag",
+        "--import-options show-only",
         "scripts/check-clean-tree",
         "scripts/check",
         "scripts/check-published-packages",
@@ -51,8 +58,9 @@ fn signed_tags_verify_published_packages_before_github_release() {
         );
     }
     for required in [
-        "git verify-tag",
-        "git verify-commit",
+        "verify-$kind",
+        "VALIDSIG",
+        "expected_fingerprint",
         "origin/main",
         "zsumz <shawn@zsumz.com>",
     ] {

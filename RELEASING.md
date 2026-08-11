@@ -21,8 +21,11 @@ release from the registry's exact archive bytes.
    behavior, but are not the later crates.io receipt.
 
 Release commits and annotated tags are PGP-signed by
-`zsumz <shawn@zsumz.com>`. The release workflow verifies that identity with the
-public key in `etc/release-signing-key.asc`.
+`zsumz <shawn@zsumz.com>`. The workflow revision on `main` pins the primary
+fingerprint `B58439871CD2A7275B20CC19EC8E4D26598A0373`, imports the public key
+from that trusted revision, and requires both the tag and commit to report that
+exact fingerprint. The copy in the candidate checkout is documentation only;
+it is never its own root of trust.
 
 ## Tag
 
@@ -57,13 +60,15 @@ workflow from `main`:
 gh workflow run release.yml --ref main -f tag=v0.0.1-rc.2
 ```
 
-The workflow checks out the tag, verifies the tag and commit signatures plus
-`origin/main` ancestry, proves the checkout stays clean through the canonical
-gate, downloads the exact crates.io archives, reruns their extracted-package
-and Smoque tests, and records their SHA-256 checksums. Only those downloaded
-registry bytes are attached to the GitHub prerelease or release. A failed
-verification creates no GitHub release and can be safely rerun after the
-registry is available.
+The workflow keeps two checkouts: the exact `main` revision that supplied the
+workflow provides the trusted key, fingerprint, and verification script; the
+requested tag supplies the candidate under test. It verifies the tag and
+commit signatures plus `origin/main` ancestry, proves the candidate checkout
+stays clean through the canonical gate, downloads the exact crates.io
+archives, reruns their extracted-package and Smoque tests, and records their
+SHA-256 checksums. Only those downloaded registry bytes are attached to the
+GitHub prerelease or release. A failed verification creates no GitHub release
+and can be safely rerun after the registry is available.
 
 ## Post-publish verification
 

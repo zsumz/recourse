@@ -11,6 +11,9 @@ on:
 permissions:
   contents: read
 
+env:
+  RECOURSE_RELEASE_FINGERPRINT: B58439871CD2A7275B20CC19EC8E4D26598A0373
+
 concurrency:
   group: release-${{ inputs.tag }}
   cancel-in-progress: false
@@ -22,28 +25,50 @@ defaults:
 jobs:
   verify:
     name: Verify signed tag and packages
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+        working-directory: candidate
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Check out trusted verifier
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          path: trusted
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Check out release candidate
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           ref: ${{ inputs.tag }}
+          path: candidate
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: "24.19.0"
           package-manager-cache: false
-      - uses: ./.github/actions/setup-rust
+      - uses: ./trusted/.github/actions/setup-rust
       - name: Verify signed release identity
         env:
           GNUPGHOME: ${{ runner.temp }}/release-gnupg
           TAG: ${{ inputs.tag }}
         run: |
           install -d -m 700 "$GNUPGHOME"
-          gpg --batch --import etc/release-signing-key.asc
+          key=../trusted/etc/release-signing-key.asc
+          fingerprint=$(gpg --batch --with-colons --import-options show-only \
+            --import "$key" | awk -F: '$1 == "fpr" { print $10; exit }')
+          if [[ "$fingerprint" != "$RECOURSE_RELEASE_FINGERPRINT" ]]; then
+            echo "trusted release key fingerprint does not match policy" >&2
+            exit 1
+          fi
+          gpg --batch --import "$key"
           git fetch --no-tags origin main:refs/remotes/origin/main
-          scripts/verify-release-tag "$TAG"
+          ../trusted/scripts/verify-release-tag \
+            "$PWD" "$TAG" "$RECOURSE_RELEASE_FINGERPRINT"
       - run: scripts/check-clean-tree
       - run: cargo fetch --locked
       - run: scripts/check
