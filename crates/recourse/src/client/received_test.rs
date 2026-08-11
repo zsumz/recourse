@@ -66,7 +66,13 @@ fn unknown_and_wrong_typed_members_remain_in_the_raw_object() {
     assert_eq!(problem.raw()["vendor"]["kept"], true);
     assert!(matches!(
         problem.protocol_issues(),
-        [ProtocolIssue::TransportStatusMismatch { .. }]
+        [
+            ProtocolIssue::TransportStatusMismatch { .. },
+            ProtocolIssue::InvalidMemberType {
+                member: "title",
+                expected: "string"
+            }
+        ]
     ));
 }
 
@@ -109,6 +115,25 @@ fn typed_access_verifies_identity_and_preserves_extra_evidence() {
 }
 
 #[test]
+fn typed_conformance_requires_decodable_evidence() {
+    let wrong_shape = received(
+        br#"{"type":"https://client.invalid/problems/RCV-1","status":404,"code":"RCV-1","evidence":{"resource":7}}"#,
+        StatusCode::NOT_FOUND,
+    );
+    let typed = wrong_shape
+        .try_as::<Known>()
+        .unwrap_or_else(|error| panic!("matching type must verify: {error}"))
+        .unwrap_or_else(|| panic!("matching code must produce a typed view"));
+
+    assert!(wrong_shape.protocol_issues().is_empty());
+    assert!(matches!(
+        typed.evidence(),
+        Err(TypedProblemError::Evidence(_))
+    ));
+    assert!(!typed.is_conformant());
+}
+
+#[test]
 fn typed_access_surfaces_spoofed_type_and_ignores_other_codes() {
     let spoofed = received(
         br#"{"type":"https://attacker.invalid/problem","code":"RCV-1","evidence":{}}"#,
@@ -138,7 +163,11 @@ fn malformed_standard_identity_is_a_nonfatal_issue() {
         problem.protocol_issues(),
         [
             ProtocolIssue::MalformedCode,
-            ProtocolIssue::InvalidBodyStatus
+            ProtocolIssue::InvalidBodyStatus,
+            ProtocolIssue::InvalidMemberType {
+                member: "evidence",
+                expected: "object"
+            }
         ]
     );
 }

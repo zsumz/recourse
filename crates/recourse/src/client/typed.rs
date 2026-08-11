@@ -43,9 +43,12 @@ impl<'a, D: HttpProblemType> ReceivedTypedProblem<'a, D> {
         self.received
     }
 
-    /// Whether tolerant body parsing found no remaining protocol issue.
-    pub fn is_conformant(&self) -> bool {
-        self.received.protocol_issues().is_empty()
+    /// Whether the envelope has no protocol issue and evidence decodes as declared.
+    pub fn is_conformant(&self) -> bool
+    where
+        D::Evidence: DeserializeOwned,
+    {
+        self.received.protocol_issues().is_empty() && self.evidence().is_ok()
     }
 }
 

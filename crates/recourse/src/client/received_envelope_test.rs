@@ -70,6 +70,13 @@ fn operation_preserves_unknown_and_wrong_typed_members() {
         Some(7)
     );
     assert_eq!(received.suggestions(), ["one"]);
+    assert_eq!(
+        received.protocol_issues(),
+        [ProtocolIssue::InvalidMemberType {
+            member: "suggestions",
+            expected: "array of strings"
+        }]
+    );
     assert_eq!(received.raw()["vendor"], true);
     assert!(matches!(
         catalog.classify_operation(&received),
@@ -115,7 +122,13 @@ fn malformed_surface_members_are_nonfatal_issues() {
     assert_eq!(operation.impact(), None);
     assert_eq!(
         operation.protocol_issues(),
-        [ProtocolIssue::MalformedOperationDiagnosticId]
+        [
+            ProtocolIssue::MalformedOperationDiagnosticId,
+            ProtocolIssue::InvalidMemberType {
+                member: "impact",
+                expected: "object"
+            }
+        ]
     );
     assert_eq!(
         health.protocol_issues(),

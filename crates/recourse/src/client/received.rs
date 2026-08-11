@@ -98,14 +98,14 @@ impl ReceivedProblem {
         Ok(Self {
             transport_status,
             headers: headers.clone(),
-            type_uri: member::string(&raw, "type"),
-            title: member::string(&raw, "title"),
-            detail: member::string(&raw, "detail"),
-            instance: member::string(&raw, "instance"),
+            type_uri: member::string(&raw, "type", &mut issues),
+            title: member::string(&raw, "title", &mut issues),
+            detail: member::string(&raw, "detail", &mut issues),
+            instance: member::string(&raw, "instance", &mut issues),
             code,
             body_status,
-            evidence: member::object(&raw, "evidence"),
-            suggestions: member::string_array(&raw, "suggestions"),
+            evidence: member::object(&raw, "evidence", &mut issues),
+            suggestions: member::string_array(&raw, "suggestions", &mut issues),
             raw,
             issues,
         })
@@ -173,9 +173,14 @@ impl ReceivedProblem {
 }
 
 fn parse_status(raw: &Map<String, Value>, issues: &mut Vec<ProtocolIssue>) -> Option<StatusCode> {
-    let value = raw.get("status")?.as_u64()?;
-    let status = u16::try_from(value)
-        .ok()
+    let value = raw.get("status")?;
+    let Value::Number(number) = value else {
+        member::invalid_type(issues, "status", "integer");
+        return None;
+    };
+    let status = number
+        .as_u64()
+        .and_then(|value| u16::try_from(value).ok())
         .and_then(|value| StatusCode::from_u16(value).ok());
     if status.is_none() {
         issues.push(ProtocolIssue::InvalidBodyStatus);

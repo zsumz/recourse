@@ -36,14 +36,14 @@ impl ReceivedHealthFinding {
         let observed_at = parse_observed_at(&raw, &mut issues);
         Ok(Self {
             id,
-            type_uri: member::string(&raw, "type"),
+            type_uri: member::string(&raw, "type", &mut issues),
             code,
-            title: member::string(&raw, "title"),
-            detail: member::string(&raw, "detail"),
+            title: member::string(&raw, "title", &mut issues),
+            detail: member::string(&raw, "detail", &mut issues),
             severity,
             observed_at,
-            evidence: member::object(&raw, "evidence"),
-            suggestions: member::string_array(&raw, "suggestions"),
+            evidence: member::object(&raw, "evidence", &mut issues),
+            suggestions: member::string_array(&raw, "suggestions", &mut issues),
             raw,
             issues,
         })
@@ -116,8 +116,8 @@ impl<C: CatalogSpec> Catalog<C> {
 }
 
 fn parse_id(raw: &Map<String, Value>, issues: &mut Vec<ProtocolIssue>) -> Option<HealthFindingId> {
-    let value = raw.get("id")?.as_str()?;
-    if let Ok(id) = HealthFindingId::try_new(value) {
+    let value = member::string(raw, "id", issues)?;
+    if let Ok(id) = HealthFindingId::try_new(&value) {
         Some(id)
     } else {
         issues.push(ProtocolIssue::MalformedHealthFindingId);
@@ -129,8 +129,8 @@ fn parse_severity(
     raw: &Map<String, Value>,
     issues: &mut Vec<ProtocolIssue>,
 ) -> Option<HealthSeverity> {
-    let value = raw.get("severity")?.as_str()?;
-    match value {
+    let value = member::string(raw, "severity", issues)?;
+    match value.as_str() {
         "degraded" => Some(HealthSeverity::Degraded),
         "unhealthy" => Some(HealthSeverity::Unhealthy),
         _ => {
@@ -144,8 +144,8 @@ fn parse_observed_at(
     raw: &Map<String, Value>,
     issues: &mut Vec<ProtocolIssue>,
 ) -> Option<ObservationTime> {
-    let value = raw.get("observed_at")?.as_str()?;
-    if let Ok(observed_at) = ObservationTime::parse(value) {
+    let value = member::string(raw, "observed_at", issues)?;
+    if let Ok(observed_at) = ObservationTime::parse(&value) {
         Some(observed_at)
     } else {
         issues.push(ProtocolIssue::InvalidObservationTime);

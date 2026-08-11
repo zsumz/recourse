@@ -33,13 +33,13 @@ impl ReceivedOperationDiagnostic {
         let code = member::code(&raw, &mut issues);
         Ok(Self {
             id,
-            type_uri: member::string(&raw, "type"),
+            type_uri: member::string(&raw, "type", &mut issues),
             code,
-            title: member::string(&raw, "title"),
-            detail: member::string(&raw, "detail"),
-            evidence: member::object(&raw, "evidence"),
-            impact: member::object(&raw, "impact"),
-            suggestions: member::string_array(&raw, "suggestions"),
+            title: member::string(&raw, "title", &mut issues),
+            detail: member::string(&raw, "detail", &mut issues),
+            evidence: member::object(&raw, "evidence", &mut issues),
+            impact: member::object(&raw, "impact", &mut issues),
+            suggestions: member::string_array(&raw, "suggestions", &mut issues),
             raw,
             issues,
         })
@@ -113,8 +113,8 @@ fn parse_id(
     raw: &Map<String, Value>,
     issues: &mut Vec<ProtocolIssue>,
 ) -> Option<OperationDiagnosticId> {
-    let value = raw.get("id")?.as_str()?;
-    if let Ok(id) = OperationDiagnosticId::try_new(value) {
+    let value = member::string(raw, "id", issues)?;
+    if let Ok(id) = OperationDiagnosticId::try_new(&value) {
         Some(id)
     } else {
         issues.push(ProtocolIssue::MalformedOperationDiagnosticId);
