@@ -6,6 +6,7 @@ use super::{
     AcceptanceError, CatalogLock, CompatibilityReport, LockEntry, LockState, RetirementError,
     compatibility,
     replacement::{self, ReplacementIssue},
+    retirement,
 };
 
 /// Whether catalog acceptance may record acknowledged breaking changes.
@@ -50,9 +51,7 @@ pub(super) fn retire<'a>(
     reason: String,
     replacement: Option<Code>,
 ) -> Result<&'a LockEntry, RetirementError> {
-    if reason.trim().is_empty() {
-        return Err(RetirementError::EmptyReason);
-    }
+    retirement::validate(&reason).map_err(RetirementError::from)?;
     let index = lock
         .entries
         .iter()

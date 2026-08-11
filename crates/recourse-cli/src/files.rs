@@ -53,6 +53,21 @@ pub(crate) fn write_lock(path: &Path, lock: &CatalogLock) -> Result<(), CommandE
     let mut body = Vec::new();
     lock.write_pretty(&mut body)
         .map_err(CommandError::EncodeLock)?;
+    if body.len() > MAX_CATALOG_LOCK_BYTES {
+        return Err(CommandError::EncodedLockTooLarge {
+            path: path.to_owned(),
+            maximum: MAX_CATALOG_LOCK_BYTES,
+        });
+    }
+    let parsed = CatalogLock::from_slice(&body).map_err(|source| CommandError::ParseLock {
+        path: path.to_owned(),
+        source,
+    })?;
+    if &parsed != lock {
+        return Err(CommandError::LockRoundTrip {
+            path: path.to_owned(),
+        });
+    }
     atomic_replace_with(path, &body, Write::write_all)
 }
 

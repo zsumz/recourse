@@ -30,6 +30,13 @@ pub(crate) enum CommandError {
         source: LockParseError,
     },
     EncodeLock(LockWriteError),
+    EncodedLockTooLarge {
+        path: PathBuf,
+        maximum: usize,
+    },
+    LockRoundTrip {
+        path: PathBuf,
+    },
     Accept(AcceptanceError),
     Retire(RetirementError),
     Write {
@@ -65,6 +72,16 @@ impl Display for CommandError {
                 write!(formatter, "parse lock `{}`: {source}", path.display())
             }
             Self::EncodeLock(source) => write!(formatter, "encode catalog lock: {source}"),
+            Self::EncodedLockTooLarge { path, maximum } => write!(
+                formatter,
+                "encode lock `{}`: output exceeds the {maximum}-byte limit",
+                path.display()
+            ),
+            Self::LockRoundTrip { path } => write!(
+                formatter,
+                "encode lock `{}`: parsed value differs from the mutation result",
+                path.display()
+            ),
             Self::Accept(source) => write!(formatter, "accept catalog: {source}"),
             Self::Retire(source) => write!(formatter, "retire diagnostic: {source}"),
             Self::Write { path, source } => {
@@ -98,6 +115,8 @@ impl Error for CommandError {
             Self::Retire(source) => Some(source),
             Self::Json(source) => Some(source),
             Self::InputTooLarge { .. }
+            | Self::EncodedLockTooLarge { .. }
+            | Self::LockRoundTrip { .. }
             | Self::InvalidManifest { .. }
             | Self::UnsafeDocumentation { .. } => None,
         }

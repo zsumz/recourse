@@ -7,6 +7,7 @@ mod error;
 mod lifecycle;
 mod parse;
 mod replacement;
+mod retirement;
 
 use std::io::Write;
 
@@ -20,6 +21,7 @@ pub use error::{
     AcceptanceError, LockParseError, LockWriteError, ReservationError, RetirementError,
 };
 pub use lifecycle::Reservation;
+pub use retirement::MAX_RETIREMENT_REASON_CHARS;
 
 /// Maximum accepted encoded size of a catalog lock.
 pub const MAX_CATALOG_LOCK_BYTES: usize = 16 * 1024 * 1024;

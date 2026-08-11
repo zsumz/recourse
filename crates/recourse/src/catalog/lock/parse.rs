@@ -10,6 +10,7 @@ use crate::{
 use super::{
     CatalogLock, LockEntry, LockParseError, MAX_CATALOG_LOCK_BYTES,
     replacement::{self, ReplacementIssue},
+    retirement,
 };
 
 pub(super) fn parse_lock(body: &[u8]) -> Result<CatalogLock, LockParseError> {
@@ -65,9 +66,9 @@ fn validate_entries(lock: &CatalogLock) -> Result<(), LockParseError> {
     for entry in &lock.entries {
         validate_identity(lock, entry)?;
         if let LockEntry::Retired { reason, .. } = entry
-            && reason.trim().is_empty()
+            && let Err(violation) = retirement::validate(reason)
         {
-            return invalid(&entry_path(entry), "retirement reason must be nonempty");
+            return invalid(&entry_path(entry), &violation.to_string());
         }
     }
     Ok(())

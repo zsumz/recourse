@@ -11,7 +11,7 @@ use crate::{
     client::DecodeError,
 };
 
-use super::{CompatibilityReport, LockState};
+use super::{CompatibilityReport, LockState, retirement::ReasonViolation};
 
 /// Failure to decode or semantically validate a catalog lock.
 #[derive(Debug)]
@@ -162,6 +162,18 @@ pub enum RetirementError {
     },
     /// Retirement rationale was empty or whitespace-only.
     EmptyReason,
+    /// Retirement rationale exceeded the governed character limit.
+    ReasonTooLong {
+        /// Actual Unicode scalar-value count.
+        actual_chars: usize,
+        /// Maximum accepted Unicode scalar-value count.
+        maximum: usize,
+    },
+    /// Retirement rationale contained a control character.
+    ReasonControlCharacter {
+        /// Zero-based character index.
+        character_index: usize,
+    },
     /// Replacement was the retiring code, absent, or only reserved.
     InvalidReplacement {
         /// Rejected replacement code.
@@ -182,6 +194,17 @@ impl Display for RetirementError {
                 write!(formatter, "diagnostic {code} cannot retire from {state:?}")
             }
             Self::EmptyReason => formatter.write_str("retirement reason must not be empty"),
+            Self::ReasonTooLong {
+                actual_chars,
+                maximum,
+            } => write!(
+                formatter,
+                "retirement reason is {actual_chars} characters; maximum is {maximum}"
+            ),
+            Self::ReasonControlCharacter { character_index } => write!(
+                formatter,
+                "retirement reason contains a control character at index {character_index}"
+            ),
             Self::InvalidReplacement { code } => {
                 write!(
                     formatter,
@@ -196,3 +219,21 @@ impl Display for RetirementError {
 }
 
 impl Error for RetirementError {}
+
+impl From<ReasonViolation> for RetirementError {
+    fn from(violation: ReasonViolation) -> Self {
+        match violation {
+            ReasonViolation::Empty => Self::EmptyReason,
+            ReasonViolation::TooLong {
+                actual_chars,
+                maximum,
+            } => Self::ReasonTooLong {
+                actual_chars,
+                maximum,
+            },
+            ReasonViolation::ControlCharacter { character_index } => {
+                Self::ReasonControlCharacter { character_index }
+            }
+        }
+    }
+}

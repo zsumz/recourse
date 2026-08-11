@@ -24,7 +24,8 @@ pub use issue::CatalogIssue;
 pub use lock::{
     AcceptanceError, AcceptanceMode, CatalogLock, CompatibilityChange, CompatibilityReport,
     CompatibilitySeverity, LockEntry, LockParseError, LockState, LockWriteError,
-    MAX_CATALOG_LOCK_BYTES, Reservation, ReservationError, RetirementError,
+    MAX_CATALOG_LOCK_BYTES, MAX_RETIREMENT_REASON_CHARS, Reservation, ReservationError,
+    RetirementError,
 };
 pub use metadata::{
     MAX_DETAIL_CHARS, MAX_DOCUMENTATION_CHARS, MAX_SUGGESTION_CHARS, MAX_SUGGESTIONS,
@@ -58,6 +59,8 @@ mod lock_test;
 mod metadata_test;
 #[cfg(test)]
 mod problem_set_test;
+#[cfg(test)]
+mod retirement_lock_test;
 #[cfg(test)]
 mod schema_test;
 #[cfg(test)]
