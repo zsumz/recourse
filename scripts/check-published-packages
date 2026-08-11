@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+destination=${1:?usage: scripts/check-published-packages <empty-directory>}
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+cd "$repo_root"
+
+release_version=$(awk -F '"' '/^version = / { print $2; exit }' release.toml)
+packages=()
+while IFS= read -r package; do
+  packages+=("$package")
+done < <(awk -F '"' '/^name = / { print $2 }' release.toml)
+
+mkdir -p "$destination"
+if find "$destination" -mindepth 1 -print -quit | grep -q .; then
+  echo "published-package destination must be empty: $destination" >&2
+  exit 1
+fi
+
+for package in "${packages[@]}"; do
+  archive="$package-$release_version.crate"
+  curl \
+    --fail \
+    --location \
+    --retry 5 \
+    --retry-all-errors \
+    --show-error \
+    --silent \
+    --user-agent "recourse-release-verifier/0.0.1 (https://github.com/zsumz/recourse)" \
+    "https://crates.io/api/v1/crates/$package/$release_version/download" \
+    --output "$destination/$archive"
+done
+
+scripts/check-package-archives "$destination" "published" "published"

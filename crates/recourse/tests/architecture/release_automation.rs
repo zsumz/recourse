@@ -1,4 +1,4 @@
-//! Signed tags are the only path to verified GitHub release artifacts.
+//! Signed tags and published registry bytes are the only GitHub release input.
 
 use super::{
     repository::assert_external_actions_are_pinned,
@@ -6,17 +6,22 @@ use super::{
 };
 
 #[test]
-fn signed_tags_verify_packages_before_github_release() {
+fn signed_tags_verify_published_packages_before_github_release() {
     let workspace = workspace_root();
     let workflow = read(&workspace.join(".github/workflows/release.yml"));
     let verification = read(&workspace.join("scripts/verify-release-tag"));
+    let published = read(&workspace.join("scripts/check-published-packages"));
+    let archives = read(&workspace.join("scripts/check-package-archives"));
     let key = read(&workspace.join("etc/release-signing-key.asc"));
 
     for required in [
-        "tags:",
+        "workflow_dispatch:",
+        "ref: ${{ inputs.tag }}",
         "scripts/verify-release-tag",
+        "scripts/check-clean-tree",
         "scripts/check",
-        "target/package/*.crate",
+        "scripts/check-published-packages",
+        "registry-packages/*.crate",
         "SHA256SUMS",
         "actions/upload-artifact@",
         "actions/download-artifact@",
@@ -26,6 +31,23 @@ fn signed_tags_verify_packages_before_github_release() {
         assert!(
             workflow.contains(required),
             "tag release workflow is missing {required:?}"
+        );
+    }
+    for required in ["required_files+=(Cargo.lock)", "--locked --quiet"] {
+        assert!(
+            archives.contains(required),
+            "published archive verification is missing {required:?}"
+        );
+    }
+    for required in [
+        "https://crates.io/api/v1/crates/",
+        "scripts/check-package-archives",
+        "--retry-all-errors",
+        "recourse-release-verifier/0.0.1",
+    ] {
+        assert!(
+            published.contains(required),
+            "published package check is missing {required:?}"
         );
     }
     for required in [

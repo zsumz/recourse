@@ -21,13 +21,6 @@ if [[ "${packages[*]}" != "recourse recourse-axum recourse-cli" ]]; then
   exit 1
 fi
 
-package_work=$(mktemp -d "${TMPDIR:-/tmp}/recourse-package.XXXXXX")
-cleanup() {
-  rm -rf -- "$package_work"
-}
-trap cleanup EXIT
-
-mkdir -p "$package_work/packages"
 for package in "${packages[@]}"; do
   package_args=(package -p "$package" --allow-dirty --locked --offline)
   if [[ "$package" != "recourse" ]]; then
@@ -41,40 +34,6 @@ for package in "${packages[@]}"; do
   cargo "${package_args[@]}"
 
   archive="target/package/$package-$release_version.crate"
-  contents=$(tar -tzf "$archive")
-  for required in Cargo.toml LICENSE README.md; do
-    if ! grep -Fqx "$package-$release_version/$required" <<<"$contents"; then
-      echo "$archive omits $required" >&2
-      exit 1
-    fi
-  done
-  tar -xzf "$archive" -C "$package_work/packages"
 done
 
-core_path="$package_work/packages/recourse-$release_version"
-axum_path="$package_work/packages/recourse-axum-$release_version"
-cli_path="$package_work/packages/recourse-cli-$release_version"
-package_test_target="$repo_root/target/package-self-tests"
-
-test_extracted_package() {
-  local manifest=$1
-  shift
-  CARGO_TARGET_DIR="$package_test_target" \
-    cargo test --manifest-path "$manifest" --offline --quiet "$@"
-}
-
-test_extracted_package "$core_path/Cargo.toml"
-test_extracted_package \
-  "$axum_path/Cargo.toml" \
-  --config "patch.crates-io.recourse.path=\"$core_path\""
-test_extracted_package \
-  "$cli_path/Cargo.toml" \
-  --config "patch.crates-io.recourse.path=\"$core_path\""
-echo "packaged crate self-tests passed"
-
-RECOURSE_CORE_PACKAGE=$core_path \
-RECOURSE_AXUM_PACKAGE=$axum_path \
-RECOURSE_CLI_PACKAGE=$cli_path \
-RECOURSE_PACKAGE_TARGET=$repo_root/target/package-consumer \
-RECOURSE_RELEASE_VERSION=$release_version \
-  scripts/smoke-smoque smoke/package.smoke.mts --ci
+scripts/check-package-archives "$repo_root/target/package" "source candidate"

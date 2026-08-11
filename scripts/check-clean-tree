@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+status=$(git status --porcelain --untracked-files=all)
+if [[ -n "$status" ]]; then
+  echo "release verification requires a clean worktree:" >&2
+  echo "$status" >&2
+  exit 1
+fi

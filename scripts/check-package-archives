@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+set -euo pipefail
+export LANG=C
+export LC_ALL=C
+
+archive_dir=${1:?usage: scripts/check-package-archives <archive-directory> [label]}
+label=${2:-package}
+mode=${3:-source}
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+cd "$repo_root"
+
+release_version=$(awk -F '"' '/^version = / { print $2; exit }' release.toml)
+packages=()
+while IFS= read -r package; do
+  packages+=("$package")
+done < <(awk -F '"' '/^name = / { print $2 }' release.toml)
+
+if [[ "$mode" != "source" && "$mode" != "published" ]]; then
+  echo "unknown package archive mode: $mode" >&2
+  exit 1
+fi
+if [[ -z "$release_version" ]]; then
+  echo "release.toml must identify a release version" >&2
+  exit 1
+fi
+if [[ "${packages[*]}" != "recourse recourse-axum recourse-cli" ]]; then
+  echo "release.toml package order is invalid: ${packages[*]}" >&2
+  exit 1
+fi
+
+package_work=$(mktemp -d "${TMPDIR:-/tmp}/recourse-package-archives.XXXXXX")
+cleanup() {
+  rm -rf -- "$package_work"
+}
+trap cleanup EXIT
+
+mkdir -p "$package_work/packages"
+for package in "${packages[@]}"; do
+  archive="$archive_dir/$package-$release_version.crate"
+  if [[ ! -f "$archive" ]]; then
+    echo "$label archive is missing: $archive" >&2
+    exit 1
+  fi
+  contents=$(tar -tzf "$archive")
+  required_files=(Cargo.toml LICENSE README.md)
+  if [[ "$mode" == "published" ]]; then
+    required_files+=(Cargo.lock)
+  fi
+  for required in "${required_files[@]}"; do
+    if ! grep -Fqx "$package-$release_version/$required" <<<"$contents"; then
+      echo "$archive omits $required" >&2
+      exit 1
+    fi
+  done
+  tar -xzf "$archive" -C "$package_work/packages"
+done
+
+core_path="$package_work/packages/recourse-$release_version"
+axum_path="$package_work/packages/recourse-axum-$release_version"
+cli_path="$package_work/packages/recourse-cli-$release_version"
+package_test_target="$repo_root/target/package-self-tests"
+
+test_extracted_package() {
+  local manifest=$1
+  shift
+  CARGO_TARGET_DIR="$package_test_target" \
+    cargo test --manifest-path "$manifest" --offline --quiet "$@"
+}
+
+if [[ "$mode" == "published" ]]; then
+  cargo test --manifest-path "$core_path/Cargo.toml" --locked --quiet
+  cargo test --manifest-path "$axum_path/Cargo.toml" --locked --quiet
+  cargo test --manifest-path "$cli_path/Cargo.toml" --locked --quiet
+else
+  test_extracted_package "$core_path/Cargo.toml"
+  test_extracted_package \
+    "$axum_path/Cargo.toml" \
+    --config "patch.crates-io.recourse.path=\"$core_path\""
+  test_extracted_package \
+    "$cli_path/Cargo.toml" \
+    --config "patch.crates-io.recourse.path=\"$core_path\""
+fi
+echo "$label crate self-tests passed"
+
+RECOURSE_CORE_PACKAGE=$core_path \
+RECOURSE_AXUM_PACKAGE=$axum_path \
+RECOURSE_CLI_PACKAGE=$cli_path \
+RECOURSE_PACKAGE_TARGET=$repo_root/target/package-consumer \
+RECOURSE_RELEASE_VERSION=$release_version \
+  scripts/smoke-smoque smoke/package.smoke.mts --ci

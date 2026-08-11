@@ -56,20 +56,25 @@ fn canonical_gate_proves_extracted_packages_through_smoque() {
     let workspace = workspace_root();
     let canonical = read(&workspace.join("scripts/check"));
     let packages = read(&workspace.join("scripts/check-packages"));
+    let archives = read(&workspace.join("scripts/check-package-archives"));
     let smoke = read(&workspace.join("smoke/package.smoke.mts"));
 
     assert!(canonical.contains("scripts/check-packages"));
+    for required in ["cargo \"${package_args[@]}\"", "--offline"] {
+        assert!(
+            packages.contains(required),
+            "package gate omits {required:?}"
+        );
+    }
     for required in [
-        "cargo \"${package_args[@]}\"",
         "tar -xzf",
         "cargo test --manifest-path",
         "RECOURSE_CORE_PACKAGE",
         "scripts/smoke-smoque smoke/package.smoke.mts --ci",
-        "--offline",
     ] {
         assert!(
-            packages.contains(required),
-            "package gate omits {required:?}"
+            archives.contains(required),
+            "archive gate omits {required:?}"
         );
     }
     for required in [

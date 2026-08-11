@@ -1,15 +1,18 @@
 name: Verify tagged release
 
 on:
-  push:
-    tags:
-      - 'v[0-9]*.[0-9]*.[0-9]*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Signed tag whose crates.io cohort is already published
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ inputs.tag }}
   cancel-in-progress: false
 
 defaults:
@@ -24,6 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
+          ref: ${{ inputs.tag }}
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
@@ -34,26 +38,28 @@ jobs:
       - name: Verify signed release identity
         env:
           GNUPGHOME: ${{ runner.temp }}/release-gnupg
+          TAG: ${{ inputs.tag }}
         run: |
           install -d -m 700 "$GNUPGHOME"
           gpg --batch --import etc/release-signing-key.asc
           git fetch --no-tags origin main:refs/remotes/origin/main
-          scripts/verify-release-tag "$GITHUB_REF_NAME"
+          scripts/verify-release-tag "$TAG"
+      - run: scripts/check-clean-tree
       - run: cargo fetch --locked
       - run: scripts/check
-      - name: Record exact crate checksums
+      - run: scripts/check-clean-tree
+      - name: Verify published crates and record exact checksums
         run: |
-          version=${GITHUB_REF_NAME#v}
-          for package in recourse recourse-axum recourse-cli; do
-            test -f "target/package/$package-$version.crate"
-          done
-          shasum -a 256 target/package/*.crate | tee target/package/SHA256SUMS
+          archive_dir="$RUNNER_TEMP/registry-packages"
+          scripts/check-published-packages "$archive_dir"
+          shasum -a 256 "$archive_dir"/*.crate | sed "s|$archive_dir/||" \
+            > "$archive_dir/SHA256SUMS"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: crates-${{ github.sha }}
           path: |
-            target/package/*.crate
-            target/package/SHA256SUMS
+            ${{ runner.temp }}/registry-packages/*.crate
+            ${{ runner.temp }}/registry-packages/SHA256SUMS
           if-no-files-found: error
           retention-days: 7
 
@@ -72,7 +78,7 @@ jobs:
       - name: Publish verified release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ inputs.tag }}
         run: |
           flags=(--verify-tag --generate-notes --title "recourse $TAG")
           if [[ "$TAG" == *-* ]]; then
