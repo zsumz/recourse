@@ -12,7 +12,7 @@ use dispatch_diagnostics::{
 use dispatch_model::JobId;
 use http::{Response, StatusCode, header::CONTENT_TYPE};
 use recourse::{
-    client::{Classification, DecodeLimits, ReceivedProblem},
+    client::{DecodeLimits, ProblemClassification, ReceivedProblem},
     http::{CorrelationId, EncodedProblem, ProblemOccurrence, RetryAfter},
 };
 
@@ -74,7 +74,8 @@ fn a_typed_problem_becomes_an_http_response_without_an_adapter() {
     assert!(received.protocol_issues().is_empty());
     assert!(matches!(
         catalog.classify(&received),
-        Classification::Known(definition) if definition.code().to_string() == "DSP-1003"
+        ProblemClassification::Known(known)
+            if known.diagnostic().code().to_string() == "DSP-1003" && known.is_conformant()
     ));
     let typed = received
         .try_as::<JobNotFound>()
