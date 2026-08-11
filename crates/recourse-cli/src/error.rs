@@ -15,6 +15,10 @@ pub(crate) enum CommandError {
         path: PathBuf,
         source: io::Error,
     },
+    InputTooLarge {
+        path: PathBuf,
+        maximum: usize,
+    },
     ParseArtifact {
         path: PathBuf,
         source: ArtifactParseError,
@@ -42,6 +46,11 @@ impl Display for CommandError {
             Self::Read { path, source } => {
                 write!(formatter, "read `{}`: {source}", path.display())
             }
+            Self::InputTooLarge { path, maximum } => write!(
+                formatter,
+                "read `{}`: input exceeds the {maximum}-byte limit",
+                path.display()
+            ),
             Self::ParseArtifact { path, source } => {
                 write!(formatter, "parse catalog `{}`: {source}", path.display())
             }
@@ -72,7 +81,7 @@ impl Error for CommandError {
             Self::EncodeLock(source) => Some(source),
             Self::Retire(source) => Some(source),
             Self::Json(source) => Some(source),
-            Self::InvalidManifest { .. } => None,
+            Self::InputTooLarge { .. } | Self::InvalidManifest { .. } => None,
         }
     }
 }

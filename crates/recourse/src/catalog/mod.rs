@@ -13,15 +13,18 @@ mod spec;
 mod type_uri;
 mod validator;
 
-pub use artifact::{ArtifactParseError, ArtifactWriteError, CatalogArtifact, CatalogDiagnostic};
+pub use artifact::{
+    ArtifactParseError, ArtifactWriteError, CatalogArtifact, CatalogDiagnostic,
+    MAX_CATALOG_ARTIFACT_BYTES,
+};
 pub use build_error::CatalogBuildError;
 pub use builder::{Catalog, CatalogBuilder};
 pub use code::{Code, CodeNumber, CodeNumberError, CodeParseError};
 pub use issue::CatalogIssue;
 pub use lock::{
     AcceptanceError, AcceptanceMode, CatalogLock, CompatibilityChange, CompatibilityReport,
-    CompatibilitySeverity, LockEntry, LockParseError, LockState, LockWriteError, Reservation,
-    ReservationError, RetirementError,
+    CompatibilitySeverity, LockEntry, LockParseError, LockState, LockWriteError,
+    MAX_CATALOG_LOCK_BYTES, Reservation, ReservationError, RetirementError,
 };
 pub use metadata::{
     MAX_DETAIL_CHARS, MAX_DOCUMENTATION_CHARS, MAX_SUGGESTION_CHARS, MAX_SUGGESTIONS,

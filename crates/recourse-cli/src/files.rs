@@ -1,11 +1,15 @@
 //! Bounded artifact reads and replace-after-encode lock writes.
 
 use std::{
-    fs,
+    fs::{self, File},
+    io::{Read, Write},
     path::{Component, Path, PathBuf},
 };
 
-use recourse::catalog::{CatalogArtifact, CatalogLock};
+use atomic_write_file::AtomicWriteFile;
+use recourse::catalog::{
+    CatalogArtifact, CatalogLock, MAX_CATALOG_ARTIFACT_BYTES, MAX_CATALOG_LOCK_BYTES,
+};
 
 use crate::documentation::GeneratedDocumentation;
 use crate::error::CommandError;
@@ -13,7 +17,7 @@ use crate::error::CommandError;
 const DOCS_MANIFEST: &str = ".recourse-generated";
 
 pub(crate) fn read_artifact(path: &Path) -> Result<CatalogArtifact, CommandError> {
-    let body = read(path)?;
+    let body = read_bounded(path, MAX_CATALOG_ARTIFACT_BYTES)?;
     CatalogArtifact::from_slice(&body).map_err(|source| CommandError::ParseArtifact {
         path: path.to_owned(),
         source,
@@ -21,7 +25,7 @@ pub(crate) fn read_artifact(path: &Path) -> Result<CatalogArtifact, CommandError
 }
 
 pub(crate) fn read_lock(path: &Path) -> Result<CatalogLock, CommandError> {
-    let body = read(path)?;
+    let body = read_bounded(path, MAX_CATALOG_LOCK_BYTES)?;
     CatalogLock::from_slice(&body).map_err(|source| CommandError::ParseLock {
         path: path.to_owned(),
         source,
@@ -29,7 +33,7 @@ pub(crate) fn read_lock(path: &Path) -> Result<CatalogLock, CommandError> {
 }
 
 pub(crate) fn read_optional_lock(path: &Path) -> Result<Option<CatalogLock>, CommandError> {
-    match fs::read(path) {
+    match read_bounded(path, MAX_CATALOG_LOCK_BYTES) {
         Ok(body) => {
             CatalogLock::from_slice(&body)
                 .map(Some)
@@ -38,11 +42,10 @@ pub(crate) fn read_optional_lock(path: &Path) -> Result<Option<CatalogLock>, Com
                     source,
                 })
         }
-        Err(source) if source.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        Err(source) => Err(CommandError::Read {
-            path: path.to_owned(),
-            source,
-        }),
+        Err(CommandError::Read { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
+            Ok(None)
+        }
+        Err(error) => Err(error),
     }
 }
 
@@ -50,14 +53,52 @@ pub(crate) fn write_lock(path: &Path, lock: &CatalogLock) -> Result<(), CommandE
     let mut body = Vec::new();
     lock.write_pretty(&mut body)
         .map_err(CommandError::EncodeLock)?;
-    fs::write(path, body).map_err(|source| CommandError::Write {
-        path: path.to_owned(),
-        source,
-    })
+    atomic_replace_with(path, &body, Write::write_all)
 }
 
-fn read(path: &Path) -> Result<Vec<u8>, CommandError> {
-    fs::read(path).map_err(|source| CommandError::Read {
+pub(crate) fn read_bounded(path: &Path, maximum: usize) -> Result<Vec<u8>, CommandError> {
+    let file = File::open(path).map_err(|source| CommandError::Read {
+        path: path.to_owned(),
+        source,
+    })?;
+    let mut body = Vec::new();
+    file.take(maximum as u64 + 1)
+        .read_to_end(&mut body)
+        .map_err(|source| CommandError::Read {
+            path: path.to_owned(),
+            source,
+        })?;
+    if body.len() > maximum {
+        return Err(CommandError::InputTooLarge {
+            path: path.to_owned(),
+            maximum,
+        });
+    }
+    Ok(body)
+}
+
+pub(crate) fn atomic_replace_with(
+    path: &Path,
+    body: &[u8],
+    write_body: impl FnOnce(&mut AtomicWriteFile, &[u8]) -> std::io::Result<()>,
+) -> Result<(), CommandError> {
+    let mut file = AtomicWriteFile::open(path).map_err(|source| CommandError::Write {
+        path: path.to_owned(),
+        source,
+    })?;
+    write_body(&mut file, body).map_err(|source| CommandError::Write {
+        path: path.to_owned(),
+        source,
+    })?;
+    file.flush().map_err(|source| CommandError::Write {
+        path: path.to_owned(),
+        source,
+    })?;
+    file.sync_all().map_err(|source| CommandError::Write {
+        path: path.to_owned(),
+        source,
+    })?;
+    file.commit().map_err(|source| CommandError::Write {
         path: path.to_owned(),
         source,
     })

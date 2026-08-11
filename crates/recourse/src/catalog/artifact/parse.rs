@@ -9,16 +9,14 @@ use serde_json::Value;
 
 use crate::{client::DecodeLimits, client::decode_object};
 
-use super::{CatalogArtifact, CatalogDiagnostic};
+use super::{CatalogArtifact, CatalogDiagnostic, MAX_CATALOG_ARTIFACT_BYTES};
 use crate::catalog::{Code, CodeNumber, schema, valid_problem_set_id, valid_type_base};
 
 pub use error::ArtifactParseError;
 
-const MAX_ARTIFACT_BYTES: usize = 8 * 1024 * 1024;
-
 pub(super) fn parse_artifact(body: &[u8]) -> Result<CatalogArtifact, ArtifactParseError> {
     let limits = DecodeLimits::default()
-        .with_max_body_bytes(MAX_ARTIFACT_BYTES)
+        .with_max_body_bytes(MAX_CATALOG_ARTIFACT_BYTES)
         .with_max_nesting_depth(64)
         .with_max_object_properties(16_384)
         .with_max_array_items(16_384)

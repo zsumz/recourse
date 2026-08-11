@@ -23,6 +23,7 @@ repository = "https://github.com/zsumz/recourse"
 homepage = "https://github.com/zsumz/recourse"
 
 [workspace.dependencies]
+atomic-write-file = "0.3.1"
 axum = { version = "0.8", default-features = false }
 dispatch-diagnostics = { path = "reference/dispatch-diagnostics" }
 dispatch-model = { path = "reference/dispatch-model" }

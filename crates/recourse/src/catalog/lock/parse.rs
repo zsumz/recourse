@@ -8,15 +8,13 @@ use crate::{
 };
 
 use super::{
-    CatalogLock, LockEntry, LockParseError,
+    CatalogLock, LockEntry, LockParseError, MAX_CATALOG_LOCK_BYTES,
     replacement::{self, ReplacementIssue},
 };
 
-const MAX_LOCK_BYTES: usize = 16 * 1024 * 1024;
-
 pub(super) fn parse_lock(body: &[u8]) -> Result<CatalogLock, LockParseError> {
     let limits = DecodeLimits::default()
-        .with_max_body_bytes(MAX_LOCK_BYTES)
+        .with_max_body_bytes(MAX_CATALOG_LOCK_BYTES)
         .with_max_nesting_depth(64)
         .with_max_object_properties(16_384)
         .with_max_array_items(32_768)

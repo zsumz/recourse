@@ -9,6 +9,8 @@ mod report;
 
 #[cfg(test)]
 mod arguments_test;
+#[cfg(test)]
+mod files_test;
 
 use std::process::ExitCode;
 

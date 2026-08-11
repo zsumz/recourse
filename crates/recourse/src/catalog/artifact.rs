@@ -18,6 +18,9 @@ use super::{Code, CodeNumber};
 pub(crate) use parts::DiagnosticArtifactParts;
 pub(crate) use surface::{DiagnosticSurfaces, HealthSurface, HttpSurface, OperationSurface};
 
+/// Maximum accepted encoded size of a catalog artifact.
+pub const MAX_CATALOG_ARTIFACT_BYTES: usize = 8 * 1024 * 1024;
+
 /// Deterministic generated representation of one validated catalog.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

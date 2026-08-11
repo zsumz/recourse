@@ -21,6 +21,9 @@ pub use error::{
 };
 pub use lifecycle::Reservation;
 
+/// Maximum accepted encoded size of a catalog lock.
+pub const MAX_CATALOG_LOCK_BYTES: usize = 16 * 1024 * 1024;
+
 /// Versioned append-only compatibility history for one catalog namespace.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
