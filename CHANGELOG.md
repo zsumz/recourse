@@ -20,7 +20,9 @@ ship as one versioned cohort.
 - pinned public prerelease dependencies to the exact Recourse cohort;
 - made evolving public reporting and implementation enums non-exhaustive;
 - pointed the binary-only CLI documentation metadata at its README;
-- added a latest-stable Rust lane alongside the Rust 1.96 MSRV gate.
+- added a latest-stable Rust lane alongside the Rust 1.96 MSRV gate;
+- made source-compatibility CI execute its full patch lint set against the
+  finalized RC.2 public API snapshot.
 
 ### Fixed
 

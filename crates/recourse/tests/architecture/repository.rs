@@ -100,9 +100,9 @@ fn latest_stable_lane_complements_the_msrv_gate() {
 }
 
 #[test]
-fn source_semver_gate_uses_a_frozen_local_baseline() {
+fn source_semver_gate_checks_the_frozen_rc_api() {
     let workflow = read(&workspace_root().join(".github/workflows/ci.yml"));
-    let baseline = "eb30b0659eea477fb255b5bcfcb91c11d31f758d";
+    let baseline = "ed742880b9edd7b692b5dfb585c07c5ceeb7fd43";
 
     for required in [
         "source-semver:",
@@ -118,6 +118,7 @@ fn source_semver_gate_uses_a_frozen_local_baseline() {
         );
     }
     assert_eq!(workflow.matches(baseline).count(), 2);
+    assert_eq!(workflow.matches("--release-type patch").count(), 2);
 }
 
 #[test]

@@ -99,10 +99,12 @@ jobs:
       - run: cargo install cargo-semver-checks --version 0.49.0 --locked
       - run: >-
           cargo semver-checks --package recourse
-          --baseline-rev eb30b0659eea477fb255b5bcfcb91c11d31f758d
+          --baseline-rev ed742880b9edd7b692b5dfb585c07c5ceeb7fd43
+          --release-type patch
       - run: >-
           cargo semver-checks --package recourse-axum
-          --baseline-rev eb30b0659eea477fb255b5bcfcb91c11d31f758d
+          --baseline-rev ed742880b9edd7b692b5dfb585c07c5ceeb7fd43
+          --release-type patch
 
   catalog-determinism:
     name: catalog determinism (${{ matrix.runner }})
