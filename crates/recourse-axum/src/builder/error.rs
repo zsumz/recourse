@@ -12,6 +12,7 @@ use recourse::http::{
 
 /// Invalid or incomplete Axum adapter configuration.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum LayerBuildError {
     /// No internal fallback diagnostic was selected.
     MissingInternal,

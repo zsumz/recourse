@@ -117,6 +117,7 @@ impl JsonSchema for JsonPointer {
 
 /// Reason a request-body location is not a valid public JSON Pointer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum JsonPointerError {
     /// A non-root pointer does not begin with `/`.
     MissingRootSeparator,

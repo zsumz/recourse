@@ -73,6 +73,7 @@ impl<'de> Deserialize<'de> for ObservationTime {
 
 /// Invalid or unformattable observation time.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum ObservationTimeError {
     /// Input was not RFC 3339 timestamp text.
     Parse(time::error::Parse),

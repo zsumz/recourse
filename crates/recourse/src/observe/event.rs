@@ -13,6 +13,7 @@ use super::{HttpEventContext, NormalizedRoute};
 
 /// Protocol surface that emitted an observed diagnostic.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum EventSurface {
     /// RFC 9457 HTTP Problem response.
     Http,

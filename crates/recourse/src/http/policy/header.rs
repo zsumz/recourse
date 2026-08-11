@@ -88,6 +88,7 @@ const fn is_visible_ascii(byte: u8) -> bool {
 
 /// Reason a Bearer challenge realm cannot be represented safely.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum BearerChallengeError {
     /// Realm is empty.
     EmptyRealm,
@@ -124,7 +125,6 @@ impl Display for BearerChallengeError {
 }
 
 impl Error for BearerChallengeError {}
-
 /// `401 Unauthorized` policy requiring a valid Bearer challenge.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct BearerUnauthorized;
@@ -159,7 +159,6 @@ impl PartialEq for AllowedMethods {
         self.canonical_names() == other.canonical_names()
     }
 }
-
 impl AllowedMethods {
     /// Validates a nonempty set of methods chosen at runtime.
     pub fn new(methods: impl IntoIterator<Item = Method>) -> Result<Self, AllowedMethodsError> {
@@ -204,6 +203,7 @@ impl AllowedMethods {
 
 /// Reason an allowed-method set cannot produce an `Allow` header.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum AllowedMethodsError {
     /// Method set is empty.
     Empty,

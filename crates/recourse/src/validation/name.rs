@@ -74,7 +74,6 @@ impl Display for ParameterName {
         formatter.write_str(&self.0)
     }
 }
-
 impl<'de> Deserialize<'de> for ParameterName {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -102,6 +101,7 @@ impl JsonSchema for ParameterName {
 
 /// Reason a public query or path parameter name was rejected.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ParameterNameError {
     /// Parameter name is empty.
     Empty,
@@ -134,7 +134,6 @@ impl Display for ParameterNameError {
 }
 
 impl Error for ParameterNameError {}
-
 /// Canonical lowercase HTTP field name safe to expose without its value.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 #[serde(transparent)]

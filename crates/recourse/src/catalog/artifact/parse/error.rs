@@ -9,6 +9,7 @@ use crate::client::DecodeError;
 
 /// Failure to decode or semantically validate a catalog artifact.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum ArtifactParseError {
     /// JSON exceeded a resource limit or was malformed.
     Decode(DecodeError),

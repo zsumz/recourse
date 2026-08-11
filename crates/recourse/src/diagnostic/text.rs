@@ -168,6 +168,7 @@ pub(crate) const fn count_characters(bytes: &[u8]) -> usize {
 
 /// Reason dynamic public prose was rejected.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum PublicTextError {
     /// The configured byte limit is zero.
     ZeroLimit,

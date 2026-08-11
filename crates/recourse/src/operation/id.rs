@@ -66,6 +66,7 @@ impl<'de> Deserialize<'de> for OperationDiagnosticId {
 
 /// Rejected durable diagnostic identifier.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum OperationDiagnosticIdError {
     /// Identifier did not begin with `dia_`.
     InvalidPrefix,

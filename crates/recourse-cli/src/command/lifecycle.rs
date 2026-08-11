@@ -47,6 +47,7 @@ pub(super) fn accept(
             report::write_report(&report, paths.format)?;
             Ok(ExitCode::from(1))
         }
+        Err(source) => Err(CommandError::Accept(source)),
     }
 }
 

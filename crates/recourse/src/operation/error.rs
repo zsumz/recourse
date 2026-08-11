@@ -9,6 +9,7 @@ use crate::{catalog::Code, wire::WireLimitError};
 
 /// Failure to construct a governed operation diagnostic.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum OperationBuildError {
     /// Marker was not registered on the durable-operation surface.
     DiagnosticNotRegistered {
@@ -45,6 +46,7 @@ impl Error for OperationBuildError {}
 
 /// Failure to produce the strict durable-diagnostic wire profile.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum OperationEncodeError {
     /// Evidence's custom serializer failed.
     EvidenceSerialization(serde_json::Error),

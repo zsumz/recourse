@@ -24,7 +24,7 @@ pub fn render_health<C: CatalogSpec>(
 ) -> Result<String, RenderError> {
     let mut rendered = match catalog.classify_health(finding) {
         Classification::Known(definition) => known_heading(definition, finding),
-        Classification::Unknown => unknown_heading(finding),
+        _ => unknown_heading(finding),
     };
     append_field(&mut rendered, "Severity", Some(severity(finding)));
     append_field(

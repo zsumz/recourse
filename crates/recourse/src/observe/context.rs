@@ -48,6 +48,7 @@ impl Display for NormalizedRoute {
 
 /// Reason a normalized telemetry route was rejected.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum NormalizedRouteError {
     /// Route template does not begin at `/`.
     MissingRoot,

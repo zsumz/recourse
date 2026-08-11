@@ -146,6 +146,7 @@ impl<'de> Deserialize<'de> for Code {
 
 /// Reason a textual diagnostic code is not canonical.
 #[derive(Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum CodeParseError {
     /// The code does not contain the required prefix-number separator.
     MissingSeparator,

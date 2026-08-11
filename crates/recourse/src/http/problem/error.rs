@@ -12,6 +12,7 @@ use super::super::PolicyError;
 
 /// Strict Problem construction failure.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum ProblemBuildError {
     /// Exact diagnostic marker type was not registered in this catalog.
     DiagnosticNotRegistered {
@@ -83,6 +84,7 @@ impl Error for ProblemBuildError {
 
 /// Canonical Problem encoding failure.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum ProblemEncodeError {
     /// Reviewed evidence serializer returned an error.
     EvidenceSerialization(serde_json::Error),

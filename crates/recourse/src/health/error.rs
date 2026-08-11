@@ -9,6 +9,7 @@ use crate::{catalog::Code, wire::WireLimitError};
 
 /// Failure to construct a governed health finding.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum HealthBuildError {
     /// Marker was not registered on the health-finding surface.
     DiagnosticNotRegistered {
@@ -42,6 +43,7 @@ impl Error for HealthBuildError {}
 
 /// Failure to produce the strict health-finding wire profile.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum HealthEncodeError {
     /// Evidence's custom serializer failed.
     EvidenceSerialization(serde_json::Error),

@@ -4,6 +4,7 @@ use http::StatusCode;
 
 /// Protocol inconsistency that does not prevent fallback rendering.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ProtocolIssue {
     /// A string-valued code was not canonical Recourse identity text.
     MalformedCode,

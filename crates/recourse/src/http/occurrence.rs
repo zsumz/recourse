@@ -96,6 +96,7 @@ impl JsonSchema for CorrelationId {
 
 /// Reason a request correlation value is unsafe to accept or echo.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum CorrelationIdError {
     /// Correlation value is empty.
     Empty,
@@ -165,6 +166,7 @@ impl ProblemOccurrence {
 
 /// Reason a Problem occurrence could not be created.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ProblemOccurrenceError {
     /// Instance is empty or not a valid RFC 3986 URI reference.
     InvalidInstance(UriReferenceError),

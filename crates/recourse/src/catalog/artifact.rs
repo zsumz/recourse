@@ -192,6 +192,7 @@ impl CatalogDiagnostic {
 
 /// Error writing a deterministic catalog artifact.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum ArtifactWriteError {
     /// JSON serialization failed.
     Serialize(serde_json::Error),

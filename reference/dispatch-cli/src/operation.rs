@@ -23,7 +23,7 @@ pub fn render_operation<C: CatalogSpec>(
 ) -> Result<String, RenderError> {
     let mut rendered = match catalog.classify_operation(diagnostic) {
         Classification::Known(definition) => known_heading(definition, diagnostic),
-        Classification::Unknown => unknown_heading(diagnostic),
+        _ => unknown_heading(diagnostic),
     };
     append_field(&mut rendered, "Detail", diagnostic.detail());
     append_object(&mut rendered, "Evidence", diagnostic.evidence())?;

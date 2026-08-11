@@ -42,6 +42,7 @@ impl Display for UriReference {
 
 /// Reason a value cannot serve as a nonempty URI reference.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum UriReferenceError {
     /// Empty references are valid RFC 3986 references but not occurrence IDs.
     Empty,

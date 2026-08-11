@@ -133,5 +133,6 @@ fn append_issue(rendered: &mut String, issue: &ProtocolIssue) {
         ProtocolIssue::CodeNotRegisteredForHttp => {
             rendered.push_str("known code is not registered for HTTP");
         }
+        _ => rendered.push_str("unrecognized protocol inconsistency"),
     }
 }

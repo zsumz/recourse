@@ -10,6 +10,7 @@ pub use crate::wire::WireLimit as DecodeLimit;
 
 /// Malformed or resource-exhausting diagnostic input.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum DecodeError {
     /// Body is not valid JSON.
     MalformedJson(serde_json::Error),

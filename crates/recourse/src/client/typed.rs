@@ -156,6 +156,7 @@ impl ReceivedProblem {
 
 /// Typed known-code verification or evidence-decoding failure.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum TypedProblemError {
     /// Diagnostic's catalog declaration cannot produce a canonical code.
     InvalidDeclaration(CodeParseError),

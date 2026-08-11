@@ -15,6 +15,7 @@ use super::{CompatibilityReport, LockState};
 
 /// Failure to decode or semantically validate a catalog lock.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum LockParseError {
     /// JSON exceeded a resource limit or was malformed.
     Decode(DecodeError),
@@ -61,6 +62,7 @@ impl Error for LockParseError {
 
 /// Failure to write deterministic lock JSON.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum LockWriteError {
     /// Lock serialization failed.
     Serialize(serde_json::Error),
@@ -88,6 +90,7 @@ impl Error for LockWriteError {
 
 /// Refused reservation of a permanent diagnostic number.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ReservationError {
     /// Explicit number already appears anywhere in lock history.
     AlreadyUsed {
@@ -114,6 +117,7 @@ impl Error for ReservationError {}
 
 /// Refused acceptance of a catalog compatibility report.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum AcceptanceError {
     /// Permanent identity or tombstone history would be violated.
     Forbidden(CompatibilityReport),
@@ -142,6 +146,7 @@ impl Error for AcceptanceError {}
 
 /// Refused explicit transition from active definition to tombstone.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RetirementError {
     /// Code is absent from lock history.
     UnknownCode {

@@ -8,6 +8,7 @@ use super::{ProtocolIssue, ReceivedProblem};
 
 /// Classification against one explicitly built local catalog.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub enum Classification<'a> {
     /// Received code is present in the requested local surface.
     Known(&'a CatalogDiagnostic),
@@ -17,6 +18,7 @@ pub enum Classification<'a> {
 
 /// HTTP Problem classification with catalog-aware conformance findings.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum ProblemClassification<'a> {
     /// Received code is present, with its declaration conformance result.
     Known(KnownProblemClassification<'a>),

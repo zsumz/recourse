@@ -150,6 +150,7 @@ impl JsonSchema for ValidationEvidence {
 
 /// Reason a validation evidence collection violates its protocol bounds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ValidationEvidenceError {
     /// Configured maximum is zero.
     ZeroLimit,

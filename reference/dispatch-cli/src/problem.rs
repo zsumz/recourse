@@ -18,7 +18,7 @@ pub fn render_problem<C: CatalogSpec>(
 ) -> Result<String, RenderError> {
     let mut rendered = match catalog.classify(problem) {
         ProblemClassification::Known(known) => render_known(&known, problem),
-        ProblemClassification::Unknown => render_unknown(problem),
+        _ => render_unknown(problem),
     };
     append_raw(&mut rendered, problem.raw())?;
     Ok(rendered)

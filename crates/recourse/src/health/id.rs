@@ -65,6 +65,7 @@ impl<'de> Deserialize<'de> for HealthFindingId {
 
 /// Rejected health finding identifier.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum HealthFindingIdError {
     /// Identifier did not begin with `finding_`.
     InvalidPrefix,

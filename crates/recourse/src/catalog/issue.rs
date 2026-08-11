@@ -6,6 +6,7 @@ use super::CodeNumber;
 
 /// One independently actionable catalog definition problem.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum CatalogIssue {
     /// Catalog name is not canonical lowercase kebab case.
     InvalidName {

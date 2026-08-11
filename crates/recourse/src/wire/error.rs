@@ -7,6 +7,7 @@ use std::{
 
 /// Diagnostic JSON resource budget.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum WireLimit {
     /// Encoded response body bytes.
     BodyBytes,

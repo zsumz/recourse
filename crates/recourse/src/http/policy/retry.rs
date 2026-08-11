@@ -54,6 +54,7 @@ impl RetryAfter {
 
 /// Reason an absolute retry time cannot be represented as an HTTP-date.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RetryAfterError {
     /// HTTP dates cannot represent times before the Unix epoch.
     BeforeUnixEpoch,
