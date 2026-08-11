@@ -32,6 +32,7 @@ enum ErrorClass {
     MalformedJson,
     RootNotObject,
     LimitExceeded,
+    Other,
 }
 
 fn error_class(error: &DecodeError) -> ErrorClass {
@@ -39,5 +40,6 @@ fn error_class(error: &DecodeError) -> ErrorClass {
         DecodeError::MalformedJson(_) => ErrorClass::MalformedJson,
         DecodeError::RootNotObject => ErrorClass::RootNotObject,
         DecodeError::LimitExceeded { .. } => ErrorClass::LimitExceeded,
+        _ => ErrorClass::Other,
     }
 }

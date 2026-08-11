@@ -22,5 +22,6 @@ fn error_class(error: &DecodeError) -> (u8, Option<DecodeLimit>) {
         DecodeError::MalformedJson(_) => (0, None),
         DecodeError::RootNotObject => (1, None),
         DecodeError::LimitExceeded { limit, .. } => (2, Some(*limit)),
+        _ => (3, None),
     }
 }
