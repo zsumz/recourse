@@ -54,6 +54,9 @@ impl<C: CatalogSpec> RecourseLayerBuilder<C> {
     }
 
     /// Replaces the default ULID request-ID generator.
+    ///
+    /// The callback runs synchronously. An unwinding panic is contained and
+    /// becomes the sanitized internal fallback.
     #[must_use]
     pub fn request_ids(mut self, generator: impl RequestIdGenerator) -> Self {
         self.request_ids = Arc::new(generator);
@@ -64,6 +67,8 @@ impl<C: CatalogSpec> RecourseLayerBuilder<C> {
     ///
     /// Use [`CorrelationId::to_uri_path_segment`] before inserting an ID into
     /// a path so delimiters cannot change the occurrence identity.
+    /// The callback runs synchronously. An unwinding panic is contained and
+    /// becomes the sanitized internal fallback.
     #[must_use]
     pub fn instance_uri(
         mut self,
@@ -74,6 +79,10 @@ impl<C: CatalogSpec> RecourseLayerBuilder<C> {
     }
 
     /// Replaces the metadata-only HTTP observer.
+    ///
+    /// Hooks run synchronously and must remain fast, nonblocking, nonpanicking,
+    /// and internally bounded. Recourse contains unwinding panics so a telemetry
+    /// failure cannot suppress the caller response.
     #[must_use]
     pub fn observer(mut self, observer: impl HttpObserver) -> Self {
         self.observer = Arc::new(observer);
@@ -86,6 +95,8 @@ impl<C: CatalogSpec> RecourseLayerBuilder<C> {
     /// private reports go refines one choice rather than reversing it. Pairing
     /// it with [`discard_faults`](Self::discard_faults) in either order does
     /// reverse it, and [`build`](Self::build) rejects that.
+    /// The reporter follows the same synchronous, bounded hook contract as the
+    /// observer; Recourse contains unwinding panics around each invocation.
     #[must_use]
     pub fn fault_reporter(mut self, reporter: impl FaultReporter) -> Self {
         self.faults = self.faults.with_reporter(Arc::new(reporter));

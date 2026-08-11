@@ -15,6 +15,13 @@ service-error fallback, response translation, and observation timing. Catalog
 identity, status selection, required headers, JSON encoding, compatibility, and
 private/public separation remain in `recourse`.
 
+The panic boundary covers request scoping, Tower readiness and synchronous
+`call`, and the returned service future while the response can still be
+replaced. Observer and reporter panics are isolated per invocation so telemetry
+cannot suppress a caller response. These callbacks still execute synchronously:
+keep them fast, nonblocking, nonpanicking, and internally bounded, preferably by
+using a nonblocking send into an application-owned bounded channel.
+
 Applications build the layer from an explicit catalog, an explicitly registered
 internal diagnostic, and an explicit fault-reporting choice: either a
 `FaultReporter` or the deliberate `discard_faults()` opt-out. Handlers return

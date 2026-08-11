@@ -1,6 +1,10 @@
 //! Deferred delivery of public metadata and private fault reports.
 
-use std::{fmt, sync::Arc};
+use std::{
+    fmt,
+    panic::{AssertUnwindSafe, catch_unwind},
+    sync::Arc,
+};
 
 use recourse::{
     fault::PrivateReport,
@@ -19,15 +23,21 @@ impl ObservationHooks {
 
     pub(crate) fn emit(&self, pending: PendingObservation) {
         match pending {
-            PendingObservation::Problem(event) => self.observer.on_problem(&event),
+            PendingObservation::Problem(event) => {
+                contain_hook(|| self.observer.on_problem(&event));
+            }
             PendingObservation::Fault { event, reports } => {
-                self.observer.on_fault(&event);
+                contain_hook(|| self.observer.on_fault(&event));
                 for report in reports {
-                    self.reporter.report_fault(&event, &report);
+                    contain_hook(|| self.reporter.report_fault(&event, &report));
                 }
             }
         }
     }
+}
+
+fn contain_hook(hook: impl FnOnce()) {
+    let _ = catch_unwind(AssertUnwindSafe(hook));
 }
 
 impl fmt::Debug for ObservationHooks {

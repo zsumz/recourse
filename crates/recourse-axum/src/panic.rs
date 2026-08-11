@@ -24,7 +24,7 @@ impl RecoveredPanic {
 
 impl Display for RecoveredPanic {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
-        write!(formatter, "request service panicked: {}", self.message)
+        write!(formatter, "request boundary panicked: {}", self.message)
     }
 }
 
