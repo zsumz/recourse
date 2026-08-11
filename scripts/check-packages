@@ -53,6 +53,25 @@ done
 
 core_path="$package_work/packages/recourse-$release_version"
 axum_path="$package_work/packages/recourse-axum-$release_version"
+cli_path="$package_work/packages/recourse-cli-$release_version"
+package_test_target="$repo_root/target/package-self-tests"
+
+test_extracted_package() {
+  local manifest=$1
+  shift
+  CARGO_TARGET_DIR="$package_test_target" \
+    cargo test --manifest-path "$manifest" --offline --quiet "$@"
+}
+
+test_extracted_package "$core_path/Cargo.toml"
+test_extracted_package \
+  "$axum_path/Cargo.toml" \
+  --config "patch.crates-io.recourse.path=\"$core_path\""
+test_extracted_package \
+  "$cli_path/Cargo.toml" \
+  --config "patch.crates-io.recourse.path=\"$core_path\""
+echo "packaged crate self-tests passed"
+
 consumer_path="$package_work/ballast-consumer"
 mkdir -p "$consumer_path/src"
 sed \
@@ -64,7 +83,6 @@ cp smoke/ballast-consumer/src/main.rs "$consumer_path/src/main.rs"
 CARGO_TARGET_DIR="$repo_root/target/package-consumer" \
   cargo run --manifest-path "$consumer_path/Cargo.toml" --offline --quiet
 
-cli_path="$package_work/packages/recourse-cli-$release_version"
 install_root="$package_work/install"
 CARGO_TARGET_DIR="$repo_root/target/package-consumer" \
   cargo install \

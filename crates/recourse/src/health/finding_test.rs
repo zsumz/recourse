@@ -67,7 +67,7 @@ fn registered_health_finding_matches_the_canonical_wire_fixture() {
         .try_encode()
         .unwrap_or_else(|error| panic!("fixture must encode: {error}"));
 
-    let fixture = include_bytes!("../../../../conformance/wire/core-health-finding.json");
+    let fixture = include_bytes!("../../tests/fixtures/wire/core-health-finding.json");
     assert_eq!(encoded, fixture.strip_suffix(b"\n").unwrap_or(fixture));
 }
 

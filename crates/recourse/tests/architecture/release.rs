@@ -57,6 +57,7 @@ fn canonical_gate_proves_extracted_packages_and_installed_cli() {
         "cargo \"${package_args[@]}\"",
         "tar -xzf",
         "cargo run --manifest-path",
+        "cargo test --manifest-path",
         "cargo install",
         "cargo-recourse",
         "--offline",
@@ -78,6 +79,26 @@ fn canonical_gate_proves_extracted_packages_and_installed_cli() {
             "consumer smoke omits {required:?}"
         );
     }
+}
+
+#[test]
+fn published_core_excludes_repository_wide_architecture_tests() {
+    let manifest = parse(&workspace_root().join("crates/recourse/Cargo.toml"));
+    let excludes = manifest["package"]["exclude"]
+        .as_array()
+        .unwrap_or_else(|| panic!("recourse package must declare exclusions"))
+        .iter()
+        .filter_map(toml::Value::as_str)
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        excludes,
+        [
+            "tests/architecture.rs",
+            "tests/architecture/**",
+            "tests/support/**",
+        ]
+    );
 }
 
 #[test]

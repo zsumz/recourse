@@ -22,7 +22,7 @@ fn assert_raw_preserved(body: &[u8], received: &ReceivedProblem) {
 
 #[test]
 fn a_new_code_and_every_extension_survive_an_old_decoder() {
-    let body = include_bytes!("../../../conformance/malicious-input/new-code.json");
+    let body = include_bytes!("fixtures/malicious-input/new-code.json");
     let received = decode_fixture(body);
 
     assert_eq!(
@@ -34,7 +34,7 @@ fn a_new_code_and_every_extension_survive_an_old_decoder() {
 
 #[test]
 fn wrong_typed_standard_members_remain_raw_data() {
-    let body = include_bytes!("../../../conformance/malicious-input/wrong-typed-members.json");
+    let body = include_bytes!("fixtures/malicious-input/wrong-typed-members.json");
     let received = decode_fixture(body);
 
     assert_eq!(received.type_uri(), None);
@@ -48,7 +48,7 @@ fn wrong_typed_standard_members_remain_raw_data() {
 
 #[test]
 fn hostile_display_members_cannot_reach_terminal_controls() {
-    let body = include_bytes!("../../../conformance/malicious-input/terminal-spoof.json");
+    let body = include_bytes!("fixtures/malicious-input/terminal-spoof.json");
     let received = decode_fixture(body);
 
     for text in [received.title(), received.detail()].into_iter().flatten() {

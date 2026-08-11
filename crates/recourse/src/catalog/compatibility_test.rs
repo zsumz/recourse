@@ -76,7 +76,7 @@ fn optional_field_is_compatible_and_accepts_without_acknowledgement() {
     assert!(report.is_compatible());
     super::compatibility_profile_test::assert_report_fixture(
         &report,
-        include_str!("../../../../conformance/compatibility/compatible-report.json"),
+        include_str!("../../tests/fixtures/compatibility/compatible-report.json"),
     );
     assert!(
         report
@@ -100,7 +100,7 @@ fn required_field_needs_explicit_breaking_acknowledgement() {
     assert!(report.has_breaking());
     super::compatibility_profile_test::assert_report_fixture(
         &report,
-        include_str!("../../../../conformance/compatibility/breaking-report.json"),
+        include_str!("../../tests/fixtures/compatibility/breaking-report.json"),
     );
     assert!(report.changes().iter().any(|change| {
         change.id() == "REC-COMPAT-013" && change.severity() == CompatibilitySeverity::Breaking

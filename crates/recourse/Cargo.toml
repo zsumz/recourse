@@ -12,6 +12,11 @@ documentation = "https://docs.rs/recourse"
 readme = "README.md"
 keywords = ["diagnostics", "problem-details", "errors", "api", "observability"]
 categories = ["development-tools::debugging", "web-programming"]
+exclude = [
+  "tests/architecture.rs",
+  "tests/architecture/**",
+  "tests/support/**",
+]
 
 [dependencies]
 http.workspace = true

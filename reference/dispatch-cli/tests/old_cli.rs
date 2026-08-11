@@ -14,7 +14,7 @@ fn receive(body: &[u8], status: StatusCode) -> ReceivedProblem {
 fn old_cli_preserves_a_new_server_code_and_all_raw_data() {
     let old_catalog = catalog().unwrap_or_else(|error| panic!("catalog must build: {error}"));
     let received = receive(
-        include_bytes!("../../../conformance/malicious-input/new-code.json"),
+        include_bytes!("../../../crates/recourse/tests/fixtures/malicious-input/new-code.json"),
         StatusCode::BAD_GATEWAY,
     );
     let rendered = render_problem(&old_catalog, &received)

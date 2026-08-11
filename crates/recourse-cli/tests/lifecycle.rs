@@ -7,7 +7,7 @@ use std::{
     sync::atomic::{AtomicU32, Ordering},
 };
 
-const CATALOG: &[u8] = include_bytes!("../../../conformance/catalogs/cli-two-surface.json");
+const CATALOG: &[u8] = include_bytes!("fixtures/cli-two-surface.json");
 static NEXT_SANDBOX: AtomicU32 = AtomicU32::new(1);
 
 struct Sandbox {

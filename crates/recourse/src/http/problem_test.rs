@@ -88,7 +88,7 @@ fn fixed_problem_matches_the_canonical_wire_fixture() {
         encoded.headers().get(CONTENT_TYPE),
         Some(&http::HeaderValue::from_static("application/problem+json"))
     );
-    let fixture = include_bytes!("../../../../conformance/wire/core-fixed-problem.json");
+    let fixture = include_bytes!("../../tests/fixtures/wire/core-fixed-problem.json");
     assert_eq!(
         encoded.body(),
         fixture.strip_suffix(b"\n").unwrap_or(fixture)

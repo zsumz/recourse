@@ -18,7 +18,7 @@ const BEHAVIOR: &str = concat!(
 #[test]
 fn profile_names_every_implemented_and_exercised_rule() {
     let profile: serde_json::Value = serde_json::from_str(include_str!(
-        "../../../../conformance/compatibility/profile.json"
+        "../../tests/fixtures/compatibility/profile.json"
     ))
     .unwrap_or_else(|error| panic!("compatibility profile must be JSON: {error}"));
     assert_eq!(profile["profile"], "recourse-0.0.1");

@@ -75,7 +75,7 @@ fn registered_operation_matches_the_canonical_wire_fixture() {
         .try_encode()
         .unwrap_or_else(|error| panic!("fixture must encode: {error}"));
 
-    let fixture = include_bytes!("../../../../conformance/wire/core-operation.json");
+    let fixture = include_bytes!("../../tests/fixtures/wire/core-operation.json");
     assert_eq!(encoded, fixture.strip_suffix(b"\n").unwrap_or(fixture));
 }
 
