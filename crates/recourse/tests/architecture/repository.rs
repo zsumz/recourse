@@ -70,7 +70,7 @@ fn continuous_integration_runs_pinned_canonical_gates() {
     ] {
         assert!(workflow.contains(required), "CI is missing {required:?}");
     }
-    for required in ["toolchain: \"1.96.0\"", "components: rustfmt, clippy"] {
+    for required in ["default: \"1.96.0\"", "components: rustfmt, clippy"] {
         assert!(
             setup.contains(required),
             "Rust setup is missing {required:?}"
@@ -78,6 +78,24 @@ fn continuous_integration_runs_pinned_canonical_gates() {
     }
     for source in [&workflow, &setup] {
         assert_external_actions_are_pinned(source);
+    }
+}
+
+#[test]
+fn latest_stable_lane_complements_the_msrv_gate() {
+    let workflow = read(&workspace_root().join(".github/workflows/ci.yml"));
+
+    for required in [
+        "latest-stable:",
+        "latest stable (1.97.1)",
+        "toolchain: \"1.97.1\"",
+        "cargo test --workspace --all-targets --all-features --locked",
+        "cargo clippy --workspace --all-targets --all-features --locked -- -D warnings",
+    ] {
+        assert!(
+            workflow.contains(required),
+            "latest-stable CI is missing {required:?}"
+        );
     }
 }
 

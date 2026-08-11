@@ -59,6 +59,21 @@ jobs:
           --all-targets
           --locked
 
+  latest-stable:
+    name: latest stable (1.97.1)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-rust
+        with:
+          toolchain: "1.97.1"
+      - run: cargo fetch --locked
+      - run: cargo test --workspace --all-targets --all-features --locked
+      - run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+
   supply-chain:
     name: supply chain
     runs-on: ubuntu-24.04

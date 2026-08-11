@@ -88,7 +88,7 @@ fn a_second_failure_report_is_an_operator_only_private_report() {
     assert!(rendered.contains("cannot fail from state Failed"));
     assert!(rendered.contains("[operation=fail_job]"));
     assert!(rendered.contains(&format!("[job_id={}]", job.id)));
-    assert!(fault.into_report().contexts().len() == 2);
+    assert_eq!(fault.into_report().contexts().len(), 2);
 }
 
 #[test]

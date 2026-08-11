@@ -204,6 +204,7 @@ async fn a_panic_before_response_start_is_public_500_and_private_panic_report() 
     let (faults, reports) = ports.recorded();
     assert_eq!(faults, 1);
     assert_eq!(reports.len(), 1);
-    assert!(reports[0].contains("request service panicked"));
+    assert!(reports[0].contains("request boundary panicked"));
+    assert!(reports[0].contains("[recourse_stage=request_service_panic]"));
     assert!(reports[0].contains(PRIVATE_PANIC));
 }
