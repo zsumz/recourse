@@ -33,13 +33,13 @@
 ## Install
 
 ```sh
-cargo add recourse@0.0.1-rc.1
+cargo add recourse@=0.0.1-rc.2
 ```
 
 Add the Axum adapter only at the application boundary:
 
 ```sh
-cargo add recourse-axum@0.0.1-rc.1
+cargo add recourse-axum@=0.0.1-rc.2
 ```
 
 The core package has no async runtime or application-framework dependency.
@@ -127,7 +127,7 @@ Installing `recourse-cli` provides the `cargo-recourse` binary and the
 `cargo recourse` subcommand:
 
 ```sh
-cargo install recourse-cli --version 0.0.1-rc.1 --locked
+cargo install recourse-cli --version 0.0.1-rc.2 --locked
 cargo recourse check --current diagnostics/catalog.json --lock diagnostics/catalog.lock
 cargo recourse explain --current diagnostics/catalog.json DSP-1003
 ```

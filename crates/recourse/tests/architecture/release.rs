@@ -9,7 +9,7 @@ const PUBLIC_PACKAGES: [(&str, &str); 3] = [
     ("recourse-axum", "crates/recourse-axum"),
     ("recourse-cli", "crates/recourse-cli"),
 ];
-const RELEASE_VERSION: &str = "0.0.1-rc.1";
+const RELEASE_VERSION: &str = "0.0.1-rc.2";
 
 #[test]
 fn release_inventory_matches_public_manifests() {
@@ -41,10 +41,11 @@ fn workspace_and_public_dependencies_use_release_version() {
     let package = &manifest["workspace"]["package"];
     assert_eq!(package["version"].as_str(), Some(release_version));
     assert_eq!(package["rust-version"].as_str(), Some("1.96"));
+    let exact_release = format!("={release_version}");
     for dependency in ["recourse", "recourse-axum"] {
         assert_eq!(
             manifest["workspace"]["dependencies"][dependency]["version"].as_str(),
-            Some(release_version),
+            Some(exact_release.as_str()),
             "{dependency} workspace dependency version drifted"
         );
     }
@@ -111,10 +112,10 @@ fn published_core_excludes_repository_wide_architecture_tests() {
 fn crate_page_readmes_contain_first_use_instructions() {
     let workspace = workspace_root();
     let expectations = [
-        ("recourse", format!("recourse = \"{RELEASE_VERSION}\"")),
+        ("recourse", format!("recourse = \"={RELEASE_VERSION}\"")),
         (
             "recourse-axum",
-            format!("recourse-axum = \"{RELEASE_VERSION}\""),
+            format!("recourse-axum = \"={RELEASE_VERSION}\""),
         ),
         (
             "recourse-cli",

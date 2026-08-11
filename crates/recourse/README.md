@@ -5,7 +5,7 @@ protocol.
 
 ```toml
 [dependencies]
-recourse = "0.0.1-rc.1"
+recourse = "=0.0.1-rc.2"
 ```
 
 It provides:
