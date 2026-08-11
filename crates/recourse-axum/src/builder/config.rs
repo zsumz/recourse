@@ -61,6 +61,9 @@ impl<C: CatalogSpec> RecourseLayerBuilder<C> {
     }
 
     /// Replaces the RFC 9457 instance URI-reference factory.
+    ///
+    /// Use [`CorrelationId::to_uri_path_segment`] before inserting an ID into
+    /// a path so delimiters cannot change the occurrence identity.
     #[must_use]
     pub fn instance_uri(
         mut self,
@@ -176,7 +179,10 @@ impl<C: CatalogSpec> RecourseLayerBuilder<C> {
     ///     .internal::<InternalError>()
     ///     .request_ids(UlidRequestIds)
     ///     .instance_uri(|correlation_id| {
-    ///         format!("https://api.example.invalid/problem-occurrences/{correlation_id}")
+    ///         format!(
+    ///             "https://api.example.invalid/problem-occurrences/{}",
+    ///             correlation_id.to_uri_path_segment()
+    ///         )
     ///     })
     ///     .fault_reporter(FaultLog)
     ///     .build()?;
@@ -213,5 +219,8 @@ impl<C: CatalogSpec> fmt::Debug for RecourseLayerBuilder<C> {
 }
 
 fn default_instance_uri(correlation_id: &CorrelationId) -> String {
-    format!("/problem-occurrences/{correlation_id}")
+    format!(
+        "/problem-occurrences/{}",
+        correlation_id.to_uri_path_segment()
+    )
 }

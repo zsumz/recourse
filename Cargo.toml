@@ -29,6 +29,7 @@ dispatch-model = { path = "reference/dispatch-model" }
 dispatch-service = { path = "reference/dispatch-service" }
 dispatch-worker = { path = "reference/dispatch-worker" }
 futures-util = "0.3"
+fluent-uri = { version = "0.4.1", default-features = false }
 http = "1.3"
 httpdate = "1.0"
 recourse = { version = "0.0.1-rc.1", path = "crates/recourse" }

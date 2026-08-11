@@ -1,6 +1,8 @@
 //! Focused and adversarial tests for Problem occurrence identity.
 
-use super::{CorrelationId, CorrelationIdError, ProblemOccurrence, ProblemOccurrenceError};
+use super::{
+    CorrelationId, CorrelationIdError, ProblemOccurrence, ProblemOccurrenceError, UriReferenceError,
+};
 
 #[test]
 fn correlation_id_is_safe_for_header_echo() {
@@ -30,12 +32,17 @@ fn occurrence_accepts_absolute_and_relative_instances() {
         id.clone(),
         "https://api.dispatch.invalid/problem-occurrences/request-1",
     );
-    let relative = ProblemOccurrence::new(id, "/problem-occurrences/request-1");
+    let rootless = ProblemOccurrence::new(id.clone(), "occurrence-123");
+    let fragmented = ProblemOccurrence::new(id, "/problem-occurrences/request-1#attempt-2");
 
     assert!(absolute.is_ok());
     assert_eq!(
-        relative.as_ref().map(|value| value.instance().to_string()),
-        Ok("/problem-occurrences/request-1".to_owned())
+        rootless.as_ref().map(|value| value.instance().as_str()),
+        Ok("occurrence-123")
+    );
+    assert_eq!(
+        fragmented.as_ref().map(|value| value.instance().as_str()),
+        Ok("/problem-occurrences/request-1#attempt-2")
     );
 }
 
@@ -47,10 +54,31 @@ fn invalid_instance_references_are_rejected() {
 
     assert_eq!(
         ProblemOccurrence::new(id.clone(), ""),
-        Err(ProblemOccurrenceError::InvalidInstance)
+        Err(ProblemOccurrenceError::InvalidInstance(
+            UriReferenceError::Empty
+        ))
     );
-    assert_eq!(
+    assert!(matches!(
         ProblemOccurrence::new(id, "contains a space"),
-        Err(ProblemOccurrenceError::InvalidInstance)
-    );
+        Err(ProblemOccurrenceError::InvalidInstance(
+            UriReferenceError::Invalid
+        ))
+    ));
+}
+
+#[test]
+fn correlation_ids_encode_as_one_unambiguous_path_segment() {
+    for (source, expected) in [
+        ("abc/def", "abc%2Fdef"),
+        ("abc?def", "abc%3Fdef"),
+        ("abc#def", "abc%23def"),
+        ("..", "%2E%2E"),
+        ("%2F", "%252F"),
+        ("foo\\bar", "foo%5Cbar"),
+    ] {
+        let Ok(id) = CorrelationId::new(source) else {
+            panic!("test correlation ID must be valid");
+        };
+        assert_eq!(id.to_uri_path_segment(), expected);
+    }
 }

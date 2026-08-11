@@ -74,6 +74,15 @@ fn parser_rejects_version_identity_and_schema_drift() {
     identity["diagnostics"][0]["type"] = serde_json::json!("https://attacker.invalid/problem");
     assert!(parse_value(&identity).is_err());
 
+    for type_base in [
+        "https://dispatch.invalid/problems?next=/",
+        "https://dispatch.invalid/problems#/",
+    ] {
+        let mut invalid_base = encoded_value();
+        invalid_base["catalog"]["type_base"] = serde_json::json!(type_base);
+        assert!(parse_value(&invalid_base).is_err());
+    }
+
     let mut schema = encoded_value();
     schema["diagnostics"][0]["evidence_schema"]["remote"] = serde_json::json!(true);
     assert!(parse_value(&schema).is_err());

@@ -19,6 +19,7 @@ exclude = [
 ]
 
 [dependencies]
+fluent-uri.workspace = true
 http.workspace = true
 httpdate.workspace = true
 schemars.workspace = true

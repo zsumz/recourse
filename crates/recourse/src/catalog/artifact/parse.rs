@@ -5,13 +5,12 @@ mod surface;
 
 use std::{collections::BTreeSet, fmt::Display};
 
-use http::Uri;
 use serde_json::Value;
 
 use crate::{client::DecodeLimits, client::decode_object};
 
 use super::{CatalogArtifact, CatalogDiagnostic};
-use crate::catalog::{Code, CodeNumber, schema, valid_problem_set_id};
+use crate::catalog::{Code, CodeNumber, schema, valid_problem_set_id, valid_type_base};
 
 pub use error::ArtifactParseError;
 
@@ -60,25 +59,13 @@ fn validate_identity(artifact: &CatalogArtifact) -> Result<(), ArtifactParseErro
     }
     Code::new(&identity.prefix, CodeNumber::new(1))
         .map_err(|error| invalid_value("catalog.prefix", error))?;
-    let uri = identity
-        .type_base
-        .parse::<Uri>()
-        .map_err(|error| invalid_value("catalog.type_base", error))?;
-    if !valid_type_base(&identity.type_base, &uri) {
-        return invalid("catalog.type_base", "must be an absolute URI ending in '/'");
+    if !valid_type_base(&identity.type_base) {
+        return invalid(
+            "catalog.type_base",
+            "must be an absolute query-free and fragment-free URI with a path ending in '/'",
+        );
     }
     Ok(())
-}
-
-fn valid_type_base(value: &str, uri: &Uri) -> bool {
-    if !value.ends_with('/') {
-        return false;
-    }
-    match uri.scheme_str() {
-        Some("http" | "https") => uri.authority().is_some() && uri.path().starts_with('/'),
-        Some(_) => !uri.path().is_empty(),
-        None => false,
-    }
 }
 
 fn validate_diagnostics(artifact: &CatalogArtifact) -> Result<(), ArtifactParseError> {

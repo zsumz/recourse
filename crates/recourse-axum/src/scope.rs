@@ -43,7 +43,10 @@ pub(crate) fn event_context(request: &Request<Body>) -> HttpEventContext {
 
 pub(crate) fn emergency_occurrence() -> Option<ProblemOccurrence> {
     let correlation_id = UlidRequestIds.generate().ok()?;
-    let instance = format!("/problem-occurrences/{correlation_id}");
+    let instance = format!(
+        "/problem-occurrences/{}",
+        correlation_id.to_uri_path_segment()
+    );
     ProblemOccurrence::new(correlation_id, instance).ok()
 }
 

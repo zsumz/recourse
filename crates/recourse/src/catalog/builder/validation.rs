@@ -2,11 +2,13 @@
 
 use std::collections::BTreeMap;
 
-use http::{StatusCode, Uri};
+use http::StatusCode;
 
 use super::registration::Registration;
 use crate::{
-    catalog::{CatalogIssue, CatalogSpec, Code, CodeNumber, artifact::CatalogIdentity},
+    catalog::{
+        CatalogIssue, CatalogSpec, Code, CodeNumber, artifact::CatalogIdentity, valid_type_base,
+    },
     http::mandatory_headers,
 };
 
@@ -21,7 +23,7 @@ pub(super) fn validate_namespace<C: CatalogSpec>(
 ) -> Option<ValidatedNamespace> {
     let name_valid = valid_name(C::NAME);
     let prefix_valid = Code::new(C::PREFIX, CodeNumber::new(1)).is_ok();
-    let base_valid = valid_absolute_base(C::TYPE_BASE);
+    let base_valid = valid_type_base(C::TYPE_BASE);
     if !name_valid {
         issues.push(CatalogIssue::InvalidName {
             value: C::NAME.into(),
@@ -140,16 +142,4 @@ fn valid_name(name: &str) -> bool {
         && name
             .bytes()
             .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
-}
-
-fn valid_absolute_base(value: &str) -> bool {
-    value.ends_with('/') && value.parse::<Uri>().is_ok_and(|uri| is_absolute(&uri))
-}
-
-fn is_absolute(uri: &Uri) -> bool {
-    match uri.scheme_str() {
-        Some("http" | "https") => uri.authority().is_some() && uri.path().starts_with('/'),
-        Some(_) => !uri.path().is_empty(),
-        None => false,
-    }
 }

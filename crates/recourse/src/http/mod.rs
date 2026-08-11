@@ -4,6 +4,7 @@ mod encoded;
 mod occurrence;
 mod policy;
 mod problem;
+mod uri_reference;
 
 pub use encoded::EncodedProblem;
 pub use occurrence::{
@@ -17,6 +18,7 @@ pub use policy::{
     RetryAfterPolicy,
 };
 pub use problem::{Problem, ProblemBuildError, ProblemEncodeError};
+pub use uri_reference::{UriReference, UriReferenceError};
 
 #[cfg(test)]
 mod encoded_test;
@@ -30,3 +32,5 @@ mod policy_test;
 mod problem_header_test;
 #[cfg(test)]
 mod problem_test;
+#[cfg(test)]
+mod problem_uri_test;

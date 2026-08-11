@@ -22,6 +22,7 @@ fn core_production_dependencies_are_framework_and_runtime_neutral() {
         &["dependencies"],
     );
     let expected = BTreeSet::from([
+        "fluent-uri".to_owned(),
         "http".to_owned(),
         "httpdate".to_owned(),
         "schemars".to_owned(),

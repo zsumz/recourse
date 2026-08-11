@@ -9,6 +9,7 @@ mod lock;
 mod problem_set;
 mod schema;
 mod spec;
+mod type_uri;
 
 pub use artifact::{ArtifactParseError, ArtifactWriteError, CatalogArtifact, CatalogDiagnostic};
 pub use build_error::CatalogBuildError;
@@ -23,6 +24,7 @@ pub use lock::{
 pub(crate) use problem_set::valid_problem_set_id;
 pub use problem_set::{MAX_PROBLEM_SET_ID_BYTES, ProblemSet, ProblemSetBuilder};
 pub use spec::CatalogSpec;
+pub(crate) use type_uri::{valid_type_base, valid_type_uri};
 
 #[cfg(test)]
 mod artifact_parse_test;
@@ -48,3 +50,5 @@ mod problem_set_test;
 mod schema_test;
 #[cfg(test)]
 mod surface_test;
+#[cfg(test)]
+mod type_uri_test;

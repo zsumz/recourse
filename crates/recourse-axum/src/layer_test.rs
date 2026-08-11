@@ -111,7 +111,12 @@ fn app(reports: CountingReports) -> Router {
     let layer = RecourseLayer::builder(catalog())
         .internal::<Internal>()
         .request_ids(FixedRequestId("generated-request"))
-        .instance_uri(|id| format!("https://api.invalid/problem-occurrences/{id}"))
+        .instance_uri(|id| {
+            format!(
+                "https://api.invalid/problem-occurrences/{}",
+                id.to_uri_path_segment()
+            )
+        })
         .fault_reporter(reports)
         .build()
         .unwrap_or_else(|error| panic!("test layer must build: {error}"));
@@ -176,4 +181,35 @@ async fn invalid_incoming_ids_are_replaced_and_every_response_echoes() {
     assert_eq!(reports.count(), 0);
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(response.headers()["x-request-id"], "generated-request");
+}
+
+#[tokio::test]
+async fn default_instances_encode_hostile_request_ids_as_one_path_segment() {
+    let reports = CountingReports::default();
+    let layer = RecourseLayer::builder(catalog())
+        .internal::<Internal>()
+        .fault_reporter(reports)
+        .build()
+        .unwrap_or_else(|error| panic!("test layer must build: {error}"));
+    let request = Request::builder()
+        .uri("/resources/42")
+        .header("x-request-id", "../job?attempt#2%2F")
+        .body(Body::empty())
+        .unwrap_or_else(|error| panic!("test request must build: {error}"));
+    let response = Router::new()
+        .route("/resources/{id}", get(missing))
+        .layer(layer)
+        .oneshot(request)
+        .await
+        .unwrap_or_else(|error| match error {});
+
+    let body = to_bytes(response.into_body(), 4096)
+        .await
+        .unwrap_or_else(|error| panic!("test body must be readable: {error}"));
+    let wire: serde_json::Value = serde_json::from_slice(&body)
+        .unwrap_or_else(|error| panic!("Problem body must be JSON: {error}"));
+    assert_eq!(
+        wire["instance"],
+        "/problem-occurrences/%2E%2E%2Fjob%3Fattempt%232%252F"
+    );
 }

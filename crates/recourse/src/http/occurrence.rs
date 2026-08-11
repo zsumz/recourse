@@ -6,9 +6,10 @@ use std::{
     fmt::{self, Display, Formatter},
 };
 
-use http::Uri;
 use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::{Deserialize, Deserializer, Serialize, de::Error as _};
+
+use super::{UriReference, UriReferenceError};
 
 /// Maximum correlation ID byte length accepted at protocol boundaries.
 pub const MAX_CORRELATION_ID_BYTES: usize = 128;
@@ -43,6 +44,22 @@ impl CorrelationId {
     /// Borrows the validated correlation value.
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    /// Percent-encodes this value as exactly one non-dot URI path segment.
+    pub fn to_uri_path_segment(&self) -> String {
+        const HEX: &[u8; 16] = b"0123456789ABCDEF";
+        let mut encoded = String::with_capacity(self.0.len());
+        for byte in self.0.bytes() {
+            if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'~') {
+                encoded.push(char::from(byte));
+            } else {
+                encoded.push('%');
+                encoded.push(char::from(HEX[usize::from(byte >> 4)]));
+                encoded.push(char::from(HEX[usize::from(byte & 0x0f)]));
+            }
+        }
+        encoded
     }
 }
 
@@ -118,7 +135,7 @@ impl Error for CorrelationIdError {}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProblemOccurrence {
     correlation_id: CorrelationId,
-    instance: Uri,
+    instance: UriReference,
 }
 
 impl ProblemOccurrence {
@@ -127,13 +144,8 @@ impl ProblemOccurrence {
         correlation_id: CorrelationId,
         instance: impl AsRef<str>,
     ) -> Result<Self, ProblemOccurrenceError> {
-        let source = instance.as_ref();
-        if source.is_empty() || source == "*" {
-            return Err(ProblemOccurrenceError::InvalidInstance);
-        }
-        let instance = source
-            .parse::<Uri>()
-            .map_err(|_| ProblemOccurrenceError::InvalidInstance)?;
+        let instance = UriReference::new(instance.as_ref())
+            .map_err(ProblemOccurrenceError::InvalidInstance)?;
         Ok(Self {
             correlation_id,
             instance,
@@ -146,7 +158,7 @@ impl ProblemOccurrence {
     }
 
     /// RFC 9457 occurrence URI reference.
-    pub const fn instance(&self) -> &Uri {
+    pub const fn instance(&self) -> &UriReference {
         &self.instance
     }
 }
@@ -154,14 +166,22 @@ impl ProblemOccurrence {
 /// Reason a Problem occurrence could not be created.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProblemOccurrenceError {
-    /// Instance is empty, `*`, or not a valid hierarchical URI reference.
-    InvalidInstance,
+    /// Instance is empty or not a valid RFC 3986 URI reference.
+    InvalidInstance(UriReferenceError),
 }
 
 impl Display for ProblemOccurrenceError {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
-        formatter.write_str("Problem instance must be a valid nonempty URI reference")
+        match self {
+            Self::InvalidInstance(error) => write!(formatter, "invalid Problem instance: {error}"),
+        }
     }
 }
 
-impl Error for ProblemOccurrenceError {}
+impl Error for ProblemOccurrenceError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            Self::InvalidInstance(error) => Some(error),
+        }
+    }
+}

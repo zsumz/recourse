@@ -22,6 +22,7 @@ const RULES: &[DependencyRule] = &[
         package: "recourse",
         allowed_internal: &[],
         allowed_external: &[
+            "fluent-uri",
             "http",
             "httpdate",
             "schemars",

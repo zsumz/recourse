@@ -2,11 +2,10 @@
 
 use std::collections::BTreeMap;
 
-use http::Uri;
-
 use crate::catalog::{
     CatalogDiagnostic, CatalogIssue, Code, CodeNumber,
     artifact::{DiagnosticArtifactParts, HealthSurface, HttpSurface, OperationSurface},
+    valid_type_uri,
 };
 
 use super::{registration::Registration, validation::ValidatedNamespace};
@@ -29,7 +28,7 @@ fn compile_diagnostic(
 ) -> Option<CatalogDiagnostic> {
     let code = Code::new(namespace.prefix, registration.number).ok()?;
     let type_uri = format!("{}{code}", namespace.type_base);
-    if type_uri.parse::<Uri>().is_err() {
+    if !valid_type_uri(&type_uri) {
         issues.push(CatalogIssue::InvalidTypeUri {
             number: registration.number,
             value: type_uri,
