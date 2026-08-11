@@ -2,9 +2,9 @@
 
 use std::fmt::Write as _;
 
-use recourse::catalog::{CatalogArtifact, CatalogDiagnostic, Code};
+use recourse::catalog::{CatalogArtifact, CatalogDiagnostic};
 
-use super::{markdown, schema};
+use super::{ReplacementSummary, markdown, schema};
 
 pub(super) fn active(
     diagnostic: &CatalogDiagnostic,
@@ -24,23 +24,20 @@ pub(super) fn active(
 pub(super) fn retired(
     diagnostic: &CatalogDiagnostic,
     reason: &str,
-    replacements: &[&Code],
+    replacement: Option<ReplacementSummary<'_>>,
 ) -> Result<String, serde_json::Error> {
     let mut body = heading(diagnostic, "Retired");
     body.push_str("## Retirement\n\n");
     body.push_str(&markdown::text(reason));
     body.push_str("\n\n");
-    if let Some((first, rest)) = replacements.split_first() {
-        let label = if rest.is_empty() {
-            "Replacement"
-        } else {
-            "Replacement chain"
-        };
-        let _ = write!(body, "{label}: `{first}`");
-        for code in rest {
-            let _ = write!(body, " → `{code}`");
+    if let Some(replacement) = replacement {
+        let direct = replacement.direct();
+        let terminal = replacement.terminal();
+        let _ = writeln!(body, "Replacement: `{direct}`");
+        if terminal != direct {
+            let _ = writeln!(body, "Terminal replacement: `{terminal}`");
         }
-        body.push_str("\n\n");
+        body.push('\n');
     }
     push_surfaces(&mut body, diagnostic);
     body.push_str(&schema::section(

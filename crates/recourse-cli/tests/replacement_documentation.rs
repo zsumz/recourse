@@ -43,7 +43,7 @@ fn run(arguments: &[&Path]) -> Output {
 }
 
 #[test]
-fn retired_pages_show_the_complete_replacement_chain() {
+fn retired_pages_show_direct_and_terminal_replacements() {
     let sandbox = Sandbox::new();
     let current = sandbox.path("catalog.json");
     let lock = sandbox.path("catalog.lock");
@@ -88,7 +88,9 @@ fn retired_pages_show_the_complete_replacement_chain() {
     ]));
     let page = fs::read_to_string(out.join("retired/DSP-1004.md"))
         .unwrap_or_else(|error| panic!("read retired chain page: {error}"));
-    assert!(page.contains("Replacement chain: `DSP-1009` → `DSP-1010`"));
+    assert!(page.contains("Replacement: `DSP-1009`"));
+    assert!(page.contains("Terminal replacement: `DSP-1010`"));
+    assert!(!page.contains('→'));
 }
 
 fn retire(lock: &Path, code: &str, replacement: &str) {
