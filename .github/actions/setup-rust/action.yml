@@ -1,0 +1,10 @@
+name: Set up Rust
+description: Install recourse's reviewed Rust toolchain through immutable action code.
+
+runs:
+  using: composite
+  steps:
+    - uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c
+      with:
+        toolchain: "1.96.0"
+        components: rustfmt, clippy
