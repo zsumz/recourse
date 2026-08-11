@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+set -euo pipefail
+export LANG=C
+export LC_ALL=C
+
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+cd "$repo_root"
+
+release_version=$(awk -F '"' '/^version = / { print $2; exit }' release.toml)
+packages=()
+while IFS= read -r package; do
+  packages+=("$package")
+done < <(awk -F '"' '/^name = / { print $2 }' release.toml)
+
+if [[ "$release_version" != "0.0.1" ]]; then
+  echo "release.toml must identify the 0.0.1 candidate" >&2
+  exit 1
+fi
+if [[ "${packages[*]}" != "recourse recourse-axum recourse-cli" ]]; then
+  echo "release.toml package order is invalid: ${packages[*]}" >&2
+  exit 1
+fi
+
+package_work=$(mktemp -d "${TMPDIR:-/tmp}/recourse-package.XXXXXX")
+cleanup() {
+  rm -rf -- "$package_work"
+}
+trap cleanup EXIT
+
+mkdir -p "$package_work/packages"
+for package in "${packages[@]}"; do
+  package_args=(package -p "$package" --allow-dirty --locked --offline)
+  if [[ "$package" != "recourse" ]]; then
+    # Cargo cannot resolve the registry-normalized dependency until 0.0.1 core
+    # exists there. The extracted bytes are compiled below with a local patch.
+    package_args=(
+      package -p "$package" --allow-dirty --offline
+      --no-verify --exclude-lockfile
+    )
+  fi
+  cargo "${package_args[@]}"
+
+  archive="target/package/$package-$release_version.crate"
+  contents=$(tar -tzf "$archive")
+  for required in Cargo.toml LICENSE README.md; do
+    if ! grep -Fqx "$package-$release_version/$required" <<<"$contents"; then
+      echo "$archive omits $required" >&2
+      exit 1
+    fi
+  done
+  tar -xzf "$archive" -C "$package_work/packages"
+done
+
+core_path="$package_work/packages/recourse-$release_version"
+axum_path="$package_work/packages/recourse-axum-$release_version"
+consumer_path="$package_work/ballast-consumer"
+mkdir -p "$consumer_path/src"
+sed \
+  -e "s|@RECOURSE_PATH@|$core_path|g" \
+  -e "s|@RECOURSE_AXUM_PATH@|$axum_path|g" \
+  smoke/ballast-consumer/Cargo.toml.template >"$consumer_path/Cargo.toml"
+cp smoke/ballast-consumer/src/main.rs "$consumer_path/src/main.rs"
+
+CARGO_TARGET_DIR="$repo_root/target/package-consumer" \
+  cargo run --manifest-path "$consumer_path/Cargo.toml" --offline --quiet
+
+cli_path="$package_work/packages/recourse-cli-$release_version"
+install_root="$package_work/install"
+CARGO_TARGET_DIR="$repo_root/target/package-consumer" \
+  cargo install \
+  --path "$cli_path" \
+  --root "$install_root" \
+  --offline \
+  --quiet \
+  --config "patch.crates-io.recourse.path=\"$core_path\""
+
+actual_version=$("$install_root/bin/cargo-recourse" --version)
+if [[ "$actual_version" != "cargo-recourse $release_version" ]]; then
+  echo "unexpected installed CLI version: $actual_version" >&2
+  exit 1
+fi
