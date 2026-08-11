@@ -2,7 +2,7 @@
 
 use std::ffi::OsString;
 
-use recourse::catalog::Reservation;
+use recourse::catalog::{Code, Reservation};
 
 use super::{ArgumentError, CatalogPaths, Command, OutputFormat, cursor::Cursor};
 
@@ -40,6 +40,44 @@ pub(super) fn parse_reserve(values: &[OsString]) -> Result<Command, ArgumentErro
         reservation: reservation.unwrap_or(Reservation::Next),
         format: format.unwrap_or(OutputFormat::Human),
     })
+}
+
+pub(super) fn parse_retire(values: &[OsString]) -> Result<Command, ArgumentError> {
+    let mut cursor = Cursor::new(values);
+    let mut lock = None;
+    let mut code = None;
+    let mut reason = None;
+    let mut replacement = None;
+    let mut format = None;
+    while let Some(argument) = cursor.option()? {
+        match argument.as_str() {
+            "--lock" => set_once(&mut lock, cursor.path("--lock")?, "--lock")?,
+            "--reason" => set_once(&mut reason, cursor.text("--reason")?, "--reason")?,
+            "--replacement" => set_once(
+                &mut replacement,
+                parse_code(&cursor.text("--replacement")?)?,
+                "--replacement",
+            )?,
+            "--format" => set_once(&mut format, cursor.format()?, "--format")?,
+            value if !value.starts_with('-') => {
+                set_once(&mut code, parse_code(value)?, "<CODE>")?;
+            }
+            _ => return Err(ArgumentError::UnknownOption(argument)),
+        }
+    }
+    Ok(Command::Retire {
+        lock: required(lock, "--lock")?,
+        code: required(code, "<CODE>")?,
+        reason: required(reason, "--reason")?,
+        replacement,
+        format: format.unwrap_or(OutputFormat::Human),
+    })
+}
+
+fn parse_code(value: &str) -> Result<Code, ArgumentError> {
+    value
+        .parse()
+        .map_err(|_| ArgumentError::InvalidCode(value.to_owned()))
 }
 
 fn parse_catalog_paths(

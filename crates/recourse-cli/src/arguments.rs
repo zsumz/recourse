@@ -11,7 +11,7 @@ use recourse::catalog::{Code, Reservation};
 
 pub(crate) use error::ArgumentError;
 
-pub(crate) const USAGE: &str = "Usage:\n  cargo recourse check --current <catalog.json> --lock <catalog.lock> [--format human|json]\n  cargo recourse accept --current <catalog.json> --lock <catalog.lock> [--acknowledge-breaking] [--format human|json]\n  cargo recourse reserve --lock <catalog.lock> [--number <positive integer>] [--format human|json]\n  cargo recourse docs --current <catalog.json> --lock <catalog.lock> --out <directory> [--format human|json]\n  cargo recourse explain --current <catalog.json> <CODE> [--format human|json]";
+pub(crate) const USAGE: &str = "Usage:\n  cargo recourse check --current <catalog.json> --lock <catalog.lock> [--format human|json]\n  cargo recourse accept --current <catalog.json> --lock <catalog.lock> [--acknowledge-breaking] [--format human|json]\n  cargo recourse reserve --lock <catalog.lock> [--number <positive integer>] [--format human|json]\n  cargo recourse retire --lock <catalog.lock> <CODE> --reason <text> [--replacement <CODE>] [--format human|json]\n  cargo recourse docs --current <catalog.json> --lock <catalog.lock> --out <directory> [--format human|json]\n  cargo recourse explain --current <catalog.json> <CODE> [--format human|json]";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum OutputFormat {
@@ -29,6 +29,13 @@ pub(crate) enum Command {
     Reserve {
         lock: PathBuf,
         reservation: Reservation,
+        format: OutputFormat,
+    },
+    Retire {
+        lock: PathBuf,
+        code: Code,
+        reason: String,
+        replacement: Option<Code>,
         format: OutputFormat,
     },
     Docs {
@@ -67,6 +74,7 @@ where
         "check" => lifecycle::parse_check(tail),
         "accept" => lifecycle::parse_accept(tail),
         "reserve" => lifecycle::parse_reserve(tail),
+        "retire" => lifecycle::parse_retire(tail),
         "docs" => content::parse_docs(tail),
         "explain" => content::parse_explain(tail),
         "help" | "--help" | "-h" if tail.is_empty() => Ok(Command::Help),

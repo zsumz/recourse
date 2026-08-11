@@ -32,6 +32,13 @@ fn run(command: Command) -> Result<ExitCode, CommandError> {
             reservation,
             format,
         } => lifecycle::reserve(&lock, reservation, format),
+        Command::Retire {
+            lock,
+            code,
+            reason,
+            replacement,
+            format,
+        } => lifecycle::retire(&lock, &code, &reason, replacement.as_ref(), format),
         Command::Docs { paths, out } => content::docs(&paths, &out),
         Command::Explain {
             current,

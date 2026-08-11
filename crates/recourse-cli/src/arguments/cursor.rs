@@ -53,7 +53,7 @@ impl<'a> Cursor<'a> {
         CodeNumber::try_new(number).map_err(|_| ArgumentError::InvalidNumber(number.to_string()))
     }
 
-    fn text(&mut self, option: &'static str) -> Result<String, ArgumentError> {
+    pub(super) fn text(&mut self, option: &'static str) -> Result<String, ArgumentError> {
         let value = self
             .values
             .get(self.index)

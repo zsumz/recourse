@@ -7,7 +7,7 @@ use std::{
     path::PathBuf,
 };
 
-use recourse::catalog::{ArtifactParseError, LockParseError, LockWriteError};
+use recourse::catalog::{ArtifactParseError, LockParseError, LockWriteError, RetirementError};
 
 #[derive(Debug)]
 pub(crate) enum CommandError {
@@ -24,6 +24,7 @@ pub(crate) enum CommandError {
         source: LockParseError,
     },
     EncodeLock(LockWriteError),
+    Retire(RetirementError),
     Write {
         path: PathBuf,
         source: io::Error,
@@ -48,6 +49,7 @@ impl Display for CommandError {
                 write!(formatter, "parse lock `{}`: {source}", path.display())
             }
             Self::EncodeLock(source) => write!(formatter, "encode catalog lock: {source}"),
+            Self::Retire(source) => write!(formatter, "retire diagnostic: {source}"),
             Self::Write { path, source } => {
                 write!(formatter, "write `{}`: {source}", path.display())
             }
@@ -68,6 +70,7 @@ impl Error for CommandError {
             Self::ParseArtifact { source, .. } => Some(source),
             Self::ParseLock { source, .. } => Some(source),
             Self::EncodeLock(source) => Some(source),
+            Self::Retire(source) => Some(source),
             Self::Json(source) => Some(source),
             Self::InvalidManifest { .. } => None,
         }

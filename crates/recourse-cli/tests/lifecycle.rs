@@ -93,6 +93,42 @@ fn accept_check_and_reserve_complete_one_lock_lifecycle() {
 }
 
 #[test]
+fn retire_completes_the_public_lifecycle() {
+    let sandbox = Sandbox::new("retire");
+    let current = sandbox.path("catalog.json");
+    let lock = sandbox.path("catalog.lock");
+    bootstrap(&current, &lock);
+
+    let retired = run(&[
+        Path::new("retire"),
+        Path::new("--lock"),
+        &lock,
+        Path::new("DSP-1004"),
+        Path::new("--reason"),
+        Path::new("Unified with durable dispatch failure."),
+        Path::new("--replacement"),
+        Path::new("DSP-1009"),
+        Path::new("--format"),
+        Path::new("json"),
+    ]);
+
+    assert!(retired.status.success(), "{}", stderr(&retired));
+    let value: serde_json::Value = serde_json::from_slice(&retired.stdout)
+        .unwrap_or_else(|error| panic!("retirement must emit JSON: {error}"));
+    assert_eq!(value["code"], "DSP-1004");
+    assert_eq!(value["state"], "retired");
+    assert_eq!(value["replacement"], "DSP-1009");
+    let lock = recourse::catalog::CatalogLock::from_slice(
+        &fs::read(&lock).unwrap_or_else(|error| panic!("read retired lock: {error}")),
+    )
+    .unwrap_or_else(|error| panic!("CLI-written retirement must parse: {error}"));
+    assert_eq!(
+        lock.entries()[0].state(),
+        recourse::catalog::LockState::Retired
+    );
+}
+
+#[test]
 fn breaking_acceptance_requires_the_explicit_acknowledgement() {
     let sandbox = Sandbox::new("breaking");
     let current = sandbox.path("catalog.json");

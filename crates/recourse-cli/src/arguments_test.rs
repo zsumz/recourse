@@ -78,6 +78,41 @@ fn reserve_supports_exact_positive_numbers() {
 }
 
 #[test]
+fn retire_requires_reason_and_accepts_an_optional_replacement() {
+    let command = parse(args(&[
+        "retire",
+        "--lock",
+        "catalog.lock",
+        "DSP-1004",
+        "--reason",
+        "Unified with dispatch failure.",
+        "--replacement",
+        "DSP-1009",
+        "--format",
+        "json",
+    ]))
+    .unwrap_or_else(|error| panic!("valid retirement must parse: {error}"));
+    let Command::Retire {
+        code,
+        reason,
+        replacement,
+        format,
+        ..
+    } = command
+    else {
+        panic!("retire input must produce retire intent");
+    };
+    assert_eq!(code.to_string(), "DSP-1004");
+    assert_eq!(reason, "Unified with dispatch failure.");
+    assert_eq!(
+        replacement.map(|code| code.to_string()).as_deref(),
+        Some("DSP-1009")
+    );
+    assert_eq!(format, OutputFormat::Json);
+    assert!(parse(args(&["retire", "--lock", "catalog.lock", "DSP-1004"])).is_err());
+}
+
+#[test]
 fn missing_duplicate_and_unknown_options_fail_closed() {
     for values in [
         args(&["check", "--current", "catalog.json"]),

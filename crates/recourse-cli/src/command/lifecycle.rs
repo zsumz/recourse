@@ -2,7 +2,7 @@
 
 use std::{io::Write, process::ExitCode};
 
-use recourse::catalog::{AcceptanceError, AcceptanceMode, CatalogLock};
+use recourse::catalog::{AcceptanceError, AcceptanceMode, CatalogLock, Code};
 
 use crate::{
     arguments::{CatalogPaths, OutputFormat},
@@ -69,6 +69,21 @@ pub(super) fn reserve(
     Ok(ExitCode::SUCCESS)
 }
 
+pub(super) fn retire(
+    path: &std::path::Path,
+    code: &Code,
+    reason: &str,
+    replacement: Option<&Code>,
+    format: OutputFormat,
+) -> Result<ExitCode, CommandError> {
+    let mut lock = files::read_lock(path)?;
+    lock.retire(code, reason, replacement.cloned())
+        .map_err(CommandError::Retire)?;
+    files::write_lock(path, &lock)?;
+    write_retirement(format, code, reason, replacement)?;
+    Ok(ExitCode::SUCCESS)
+}
+
 fn write_reservation(
     format: OutputFormat,
     code: &recourse::catalog::Code,
@@ -83,6 +98,28 @@ fn write_reservation(
                 "number": code.number(),
                 "state": "reserved",
                 "type": type_uri,
+            });
+            serde_json::to_writer(&mut output, &value).map_err(CommandError::Json)?;
+            writeln!(output).map_err(CommandError::stdout)
+        }
+    }
+}
+
+fn write_retirement(
+    format: OutputFormat,
+    code: &Code,
+    reason: &str,
+    replacement: Option<&Code>,
+) -> Result<(), CommandError> {
+    let mut output = std::io::stdout().lock();
+    match format {
+        OutputFormat::Human => writeln!(output, "{code}").map_err(CommandError::stdout),
+        OutputFormat::Json => {
+            let value = serde_json::json!({
+                "code": code,
+                "state": "retired",
+                "reason": reason,
+                "replacement": replacement,
             });
             serde_json::to_writer(&mut output, &value).map_err(CommandError::Json)?;
             writeln!(output).map_err(CommandError::stdout)
