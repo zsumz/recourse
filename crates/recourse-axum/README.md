@@ -6,8 +6,8 @@ protocol.
 ```toml
 [dependencies]
 axum = "0.8"
-recourse = "0.0.1"
-recourse-axum = "0.0.1"
+recourse = "0.0.1-rc.1"
+recourse-axum = "0.0.1-rc.1"
 ```
 
 The layer owns request correlation, request-scoped `ProblemContext`, panic and

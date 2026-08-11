@@ -12,8 +12,8 @@ while IFS= read -r package; do
   packages+=("$package")
 done < <(awk -F '"' '/^name = / { print $2 }' release.toml)
 
-if [[ "$release_version" != "0.0.1" ]]; then
-  echo "release.toml must identify the 0.0.1 candidate" >&2
+if [[ -z "$release_version" ]]; then
+  echo "release.toml must identify a release version" >&2
   exit 1
 fi
 if [[ "${packages[*]}" != "recourse recourse-axum recourse-cli" ]]; then
@@ -31,7 +31,7 @@ mkdir -p "$package_work/packages"
 for package in "${packages[@]}"; do
   package_args=(package -p "$package" --allow-dirty --locked --offline)
   if [[ "$package" != "recourse" ]]; then
-    # Cargo cannot resolve the registry-normalized dependency until 0.0.1 core
+    # Cargo cannot resolve the registry-normalized dependency until this core
     # exists there. The extracted bytes are compiled below with a local patch.
     package_args=(
       package -p "$package" --allow-dirty --offline

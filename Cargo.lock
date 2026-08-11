@@ -86,7 +86,7 @@ checksum = "7cd812cc2bc1d69d4764bd80df88b4317eaef9e773c75226407d9bc0876b211c"
 
 [[package]]
 name = "dispatch-api-axum"
-version = "0.0.1"
+version = "0.0.1-rc.1"
 dependencies = [
  "axum",
  "dispatch-diagnostics",
@@ -104,7 +104,7 @@ dependencies = [
 
 [[package]]
 name = "dispatch-catalog"
-version = "0.0.1"
+version = "0.0.1-rc.1"
 dependencies = [
  "dispatch-diagnostics",
  "recourse",
@@ -112,7 +112,7 @@ dependencies = [
 
 [[package]]
 name = "dispatch-cli"
-version = "0.0.1"
+version = "0.0.1-rc.1"
 dependencies = [
  "dispatch-diagnostics",
  "dispatch-model",
@@ -123,7 +123,7 @@ dependencies = [
 
 [[package]]
 name = "dispatch-diagnostics"
-version = "0.0.1"
+version = "0.0.1-rc.1"
 dependencies = [
  "dispatch-model",
  "recourse",
@@ -133,7 +133,7 @@ dependencies = [
 
 [[package]]
 name = "dispatch-model"
-version = "0.0.1"
+version = "0.0.1-rc.1"
 dependencies = [
  "schemars",
  "serde",
@@ -142,7 +142,7 @@ dependencies = [
 
 [[package]]
 name = "dispatch-service"
-version = "0.0.1"
+version = "0.0.1-rc.1"
 dependencies = [
  "dispatch-diagnostics",
  "dispatch-model",
@@ -153,7 +153,7 @@ dependencies = [
 
 [[package]]
 name = "dispatch-worker"
-version = "0.0.1"
+version = "0.0.1-rc.1"
 dependencies = [
  "dispatch-diagnostics",
  "dispatch-model",
@@ -488,7 +488,7 @@ dependencies = [
 
 [[package]]
 name = "recourse"
-version = "0.0.1"
+version = "0.0.1-rc.1"
 dependencies = [
  "http",
  "httpdate",
@@ -502,7 +502,7 @@ dependencies = [
 
 [[package]]
 name = "recourse-axum"
-version = "0.0.1"
+version = "0.0.1-rc.1"
 dependencies = [
  "axum",
  "futures-util",
@@ -518,7 +518,7 @@ dependencies = [
 
 [[package]]
 name = "recourse-cli"
-version = "0.0.1"
+version = "0.0.1-rc.1"
 dependencies = [
  "recourse",
  "serde_json",

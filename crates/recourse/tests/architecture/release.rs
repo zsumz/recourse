@@ -9,13 +9,14 @@ const PUBLIC_PACKAGES: [(&str, &str); 3] = [
     ("recourse-axum", "crates/recourse-axum"),
     ("recourse-cli", "crates/recourse-cli"),
 ];
+const RELEASE_VERSION: &str = "0.0.1-rc.1";
 
 #[test]
 fn release_inventory_matches_public_manifests() {
     let workspace = workspace_root();
     let release = parse(&workspace.join("release.toml"));
     assert_eq!(release["schema"].as_integer(), Some(1));
-    assert_eq!(release["version"].as_str(), Some("0.0.1"));
+    assert_eq!(release["version"].as_str(), Some(RELEASE_VERSION));
     let packages = release["package"]
         .as_array()
         .unwrap_or_else(|| panic!("release package inventory must be an array"));
@@ -32,14 +33,18 @@ fn release_inventory_matches_public_manifests() {
 #[test]
 fn workspace_and_public_dependencies_use_release_version() {
     let workspace = workspace_root();
+    let release = parse(&workspace.join("release.toml"));
+    let release_version = release["version"]
+        .as_str()
+        .unwrap_or_else(|| panic!("release version must be a string"));
     let manifest = parse(&workspace.join("Cargo.toml"));
     let package = &manifest["workspace"]["package"];
-    assert_eq!(package["version"].as_str(), Some("0.0.1"));
+    assert_eq!(package["version"].as_str(), Some(release_version));
     assert_eq!(package["rust-version"].as_str(), Some("1.96"));
     for dependency in ["recourse", "recourse-axum"] {
         assert_eq!(
             manifest["workspace"]["dependencies"][dependency]["version"].as_str(),
-            Some("0.0.1"),
+            Some(release_version),
             "{dependency} workspace dependency version drifted"
         );
     }
@@ -105,17 +110,20 @@ fn published_core_excludes_repository_wide_architecture_tests() {
 fn crate_page_readmes_contain_first_use_instructions() {
     let workspace = workspace_root();
     let expectations = [
-        ("recourse", "recourse = \"0.0.1\""),
-        ("recourse-axum", "recourse-axum = \"0.0.1\""),
+        ("recourse", format!("recourse = \"{RELEASE_VERSION}\"")),
+        (
+            "recourse-axum",
+            format!("recourse-axum = \"{RELEASE_VERSION}\""),
+        ),
         (
             "recourse-cli",
-            "cargo install recourse-cli --version 0.0.1 --locked",
+            format!("cargo install recourse-cli --version {RELEASE_VERSION} --locked"),
         ),
     ];
     for (package, expected) in expectations {
         let readme = read(&workspace.join("crates").join(package).join("README.md"));
         assert!(
-            readme.contains(expected),
+            readme.contains(&expected),
             "{package} README omits {expected:?}"
         );
     }
