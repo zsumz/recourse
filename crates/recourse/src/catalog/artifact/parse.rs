@@ -1,10 +1,11 @@
 //! Bounded parsing and semantic validation for catalog artifacts.
 
 mod error;
+mod surface;
 
 use std::{collections::BTreeSet, fmt::Display};
 
-use http::{HeaderName, StatusCode, Uri};
+use http::Uri;
 use serde_json::Value;
 
 use crate::{client::DecodeLimits, client::decode_object};
@@ -126,7 +127,7 @@ fn validate_diagnostic(
         return invalid(&format!("{path}.suggestions"), "entries must be nonempty");
     }
     validate_schemas(diagnostic, &path)?;
-    validate_surfaces(diagnostic, &path)
+    surface::validate(diagnostic, &path)
 }
 
 fn validate_schemas(diagnostic: &CatalogDiagnostic, path: &str) -> Result<(), ArtifactParseError> {
@@ -141,48 +142,6 @@ fn validate_schemas(diagnostic: &CatalogDiagnostic, path: &str) -> Result<(), Ar
             path: format!("{path}.surfaces.operation.impact_schema{}", violation.path),
             reason: violation.reason,
         })?;
-    }
-    Ok(())
-}
-
-fn validate_surfaces(diagnostic: &CatalogDiagnostic, path: &str) -> Result<(), ArtifactParseError> {
-    let surfaces = &diagnostic.surfaces;
-    if !surfaces.supports_http() && !surfaces.supports_operation() && !surfaces.supports_health() {
-        return invalid(
-            &format!("{path}.surfaces"),
-            "at least one surface is required",
-        );
-    }
-    let Some(status) = diagnostic.http_status() else {
-        return Ok(());
-    };
-    if !StatusCode::from_u16(status)
-        .is_ok_and(|value| value.is_client_error() || value.is_server_error())
-    {
-        return invalid(
-            &format!("{path}.surfaces.http.status"),
-            "must be a 4xx or 5xx status",
-        );
-    }
-    if diagnostic.http_policy().is_none_or(str::is_empty) {
-        return invalid(&format!("{path}.surfaces.http.policy"), "must be nonempty");
-    }
-    validate_headers(diagnostic.required_headers().unwrap_or_default(), path)
-}
-
-fn validate_headers(headers: &[String], path: &str) -> Result<(), ArtifactParseError> {
-    let mut previous = None;
-    for header in headers {
-        header.parse::<HeaderName>().map_err(|error| {
-            invalid_value(&format!("{path}.surfaces.http.required_headers"), error)
-        })?;
-        if previous.is_some_and(|value: &String| value >= header) {
-            return invalid(
-                &format!("{path}.surfaces.http.required_headers"),
-                "must be sorted and unique",
-            );
-        }
-        previous = Some(header);
     }
     Ok(())
 }

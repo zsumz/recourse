@@ -5,7 +5,10 @@ use std::collections::BTreeMap;
 use http::{StatusCode, Uri};
 
 use super::registration::Registration;
-use crate::catalog::{CatalogIssue, CatalogSpec, Code, CodeNumber, artifact::CatalogIdentity};
+use crate::{
+    catalog::{CatalogIssue, CatalogSpec, Code, CodeNumber, artifact::CatalogIdentity},
+    http::mandatory_headers,
+};
 
 pub(super) struct ValidatedNamespace {
     pub(super) identity: CatalogIdentity,
@@ -111,6 +114,19 @@ fn validate_registration(registration: &Registration, issues: &mut Vec<CatalogIs
                 number: registration.number,
                 status: http.status,
             });
+        }
+        for header in mandatory_headers(http.status) {
+            if !http
+                .required_headers
+                .iter()
+                .any(|declared| declared.eq_ignore_ascii_case(header))
+            {
+                issues.push(CatalogIssue::MissingMandatoryHeader {
+                    number: registration.number,
+                    status: http.status,
+                    header,
+                });
+            }
         }
     }
 }

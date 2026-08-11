@@ -13,8 +13,8 @@ use crate::{
 };
 
 use super::{
-    AllowedMethods, BearerChallenge, CorrelationId, HttpProblemType, MethodNotAllowed,
-    ProblemOccurrence, RetryAfter, RetryAfterPolicy, Unauthorized,
+    AllowedMethods, BearerChallenge, BearerUnauthorized, CorrelationId, HttpProblemType,
+    MethodNotAllowed, ProblemOccurrence, RetryAfter, RetryAfterPolicy,
 };
 
 #[derive(Debug)]
@@ -48,7 +48,7 @@ macro_rules! diagnostic {
     };
 }
 
-diagnostic!(AuthenticationRequired, 1, Unauthorized);
+diagnostic!(AuthenticationRequired, 1, BearerUnauthorized);
 diagnostic!(UnsupportedMethod, 2, MethodNotAllowed);
 diagnostic!(Unavailable, 3, RetryAfterPolicy<503>);
 

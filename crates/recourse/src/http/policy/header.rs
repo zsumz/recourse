@@ -127,11 +127,11 @@ impl Error for BearerChallengeError {}
 
 /// `401 Unauthorized` policy requiring a valid Bearer challenge.
 #[derive(Debug, Clone, Copy, Default)]
-pub struct Unauthorized;
+pub struct BearerUnauthorized;
 
-impl Sealed for Unauthorized {}
+impl Sealed for BearerUnauthorized {}
 
-impl HttpPolicy for Unauthorized {
+impl HttpPolicy for BearerUnauthorized {
     type Input = BearerChallenge;
 
     const STATUS: u16 = 401;

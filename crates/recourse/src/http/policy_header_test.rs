@@ -8,8 +8,8 @@ use http::{
 };
 
 use super::{
-    AllowedMethods, AllowedMethodsError, BearerChallenge, BearerChallengeError, HttpPolicy,
-    MethodNotAllowed, RetryAfter, RetryAfterPolicy, Unauthorized,
+    AllowedMethods, AllowedMethodsError, BearerChallenge, BearerChallengeError, BearerUnauthorized,
+    HttpPolicy, MethodNotAllowed, RetryAfter, RetryAfterError, RetryAfterPolicy,
 };
 
 #[test]
@@ -18,7 +18,7 @@ fn unauthorized_emits_one_escaped_bearer_challenge() {
     let Some(challenge) = challenge.ok() else {
         return;
     };
-    let headers = Unauthorized::headers(challenge);
+    let headers = BearerUnauthorized::headers(challenge);
 
     assert_eq!(
         headers
@@ -92,7 +92,10 @@ fn retry_after_rounds_delays_up_to_seconds() {
 #[test]
 fn retry_after_formats_imf_fixdate() {
     let time = UNIX_EPOCH + Duration::from_secs(784_111_777);
-    let headers = RetryAfterPolicy::<503>::headers(RetryAfter::at(time));
+    let Ok(retry_after) = RetryAfter::try_at(time) else {
+        panic!("fixture date must be representable");
+    };
+    let headers = RetryAfterPolicy::<503>::headers(retry_after);
 
     assert_eq!(
         headers
@@ -102,4 +105,31 @@ fn retry_after_formats_imf_fixdate() {
             "Sun, 06 Nov 1994 08:49:37 GMT"
         ))
     );
+}
+
+#[test]
+fn retry_after_rejects_both_http_date_boundaries_without_panicking() {
+    let Some(before_epoch) = UNIX_EPOCH.checked_sub(Duration::from_secs(1)) else {
+        panic!("platform must represent the lower boundary");
+    };
+    let Some(after_range) = UNIX_EPOCH.checked_add(Duration::from_hours(70_389_528)) else {
+        panic!("platform must represent the upper boundary");
+    };
+    let Some(last_supported) = after_range.checked_sub(Duration::from_secs(1)) else {
+        panic!("platform must represent the last supported second");
+    };
+
+    assert!(RetryAfter::try_at(UNIX_EPOCH).is_ok());
+    assert!(RetryAfter::try_at(last_supported).is_ok());
+    assert_eq!(
+        RetryAfter::try_at(before_epoch),
+        Err(RetryAfterError::BeforeUnixEpoch)
+    );
+    assert_eq!(
+        RetryAfter::try_at(after_range),
+        Err(RetryAfterError::AfterHttpDateRange)
+    );
+    for time in [before_epoch, UNIX_EPOCH, last_supported, after_range] {
+        assert!(std::panic::catch_unwind(|| RetryAfter::try_at(time)).is_ok());
+    }
 }

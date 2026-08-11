@@ -1,9 +1,6 @@
 //! Aggregated catalog definition failures with precise ownership context.
 
-use std::{
-    error::Error,
-    fmt::{self, Display, Formatter},
-};
+use std::fmt::{self, Display, Formatter};
 
 use super::CodeNumber;
 
@@ -64,6 +61,15 @@ pub enum CatalogIssue {
         /// Rejected status value.
         status: u16,
     },
+    /// HTTP policy omits a header mandated by its status.
+    MissingMandatoryHeader {
+        /// Diagnostic number owning the policy.
+        number: CodeNumber,
+        /// Status whose semantics require the header.
+        status: u16,
+        /// Missing canonical header name.
+        header: &'static str,
+    },
     /// A derived type URI is not a valid absolute URI.
     InvalidTypeUri {
         /// Diagnostic number whose URI could not be derived safely.
@@ -120,11 +126,13 @@ impl Display for CatalogIssue {
             } => unsupported_schema(formatter, *number, "impact", path, reason),
             Self::DuplicateNumber { number } => duplicate_number(formatter, *number),
             Self::InvalidHttpStatus { number, status } => {
-                write!(
-                    formatter,
-                    "diagnostic {number} has invalid HTTP status {status}"
-                )
+                invalid_http_status(formatter, *number, *status)
             }
+            Self::MissingMandatoryHeader {
+                number,
+                status,
+                header,
+            } => missing_mandatory_header(formatter, *number, *status, header),
             Self::InvalidTypeUri { number, value } => {
                 write!(
                     formatter,
@@ -170,6 +178,29 @@ fn invalid_metadata(
     )
 }
 
+fn invalid_http_status(
+    formatter: &mut Formatter<'_>,
+    number: CodeNumber,
+    status: u16,
+) -> fmt::Result {
+    write!(
+        formatter,
+        "diagnostic {number} has invalid HTTP status {status}"
+    )
+}
+
+fn missing_mandatory_header(
+    formatter: &mut Formatter<'_>,
+    number: CodeNumber,
+    status: u16,
+    header: &str,
+) -> fmt::Result {
+    write!(
+        formatter,
+        "diagnostic {number} status {status} requires header {header}"
+    )
+}
+
 fn duplicate_number(formatter: &mut Formatter<'_>, number: CodeNumber) -> fmt::Result {
     write!(
         formatter,
@@ -189,36 +220,3 @@ fn unsupported_schema(
         "diagnostic {number} has unsupported {surface} schema at {path}: {reason}"
     )
 }
-
-/// All definition failures found during one catalog build.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CatalogBuildError {
-    issues: Vec<CatalogIssue>,
-}
-
-impl CatalogBuildError {
-    pub(crate) fn new(issues: Vec<CatalogIssue>) -> Self {
-        Self { issues }
-    }
-
-    /// Independently actionable issues in deterministic discovery order.
-    pub fn issues(&self) -> &[CatalogIssue] {
-        &self.issues
-    }
-}
-
-impl Display for CatalogBuildError {
-    fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
-        writeln!(
-            formatter,
-            "catalog construction found {} issue(s)",
-            self.issues.len()
-        )?;
-        for issue in &self.issues {
-            writeln!(formatter, "- {issue}")?;
-        }
-        Ok(())
-    }
-}
-
-impl Error for CatalogBuildError {}

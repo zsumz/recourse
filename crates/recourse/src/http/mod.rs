@@ -10,9 +10,11 @@ pub use occurrence::{
     CorrelationId, CorrelationIdError, MAX_CORRELATION_ID_BYTES, ProblemOccurrence,
     ProblemOccurrenceError,
 };
+pub(crate) use policy::mandatory_headers;
 pub use policy::{
-    AllowedMethods, AllowedMethodsError, BearerChallenge, BearerChallengeError, Fixed, HttpPolicy,
-    HttpProblemType, MethodNotAllowed, PolicyError, RetryAfter, RetryAfterPolicy, Unauthorized,
+    AllowedMethods, AllowedMethodsError, BearerChallenge, BearerChallengeError, BearerUnauthorized,
+    Fixed, HttpPolicy, HttpProblemType, MethodNotAllowed, PolicyError, RetryAfter, RetryAfterError,
+    RetryAfterPolicy,
 };
 pub use problem::{Problem, ProblemBuildError, ProblemEncodeError};
 

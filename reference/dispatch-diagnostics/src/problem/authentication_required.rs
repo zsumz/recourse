@@ -3,7 +3,7 @@
 use recourse::{
     catalog::CodeNumber,
     diagnostic::{DiagnosticType, NoEvidence},
-    http::{HttpProblemType, Unauthorized},
+    http::{BearerUnauthorized, HttpProblemType},
 };
 
 use crate::DispatchCatalog;
@@ -27,5 +27,5 @@ impl DiagnosticType for AuthenticationRequired {
 }
 
 impl HttpProblemType for AuthenticationRequired {
-    type Policy = Unauthorized;
+    type Policy = BearerUnauthorized;
 }

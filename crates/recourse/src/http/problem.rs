@@ -126,13 +126,13 @@ impl<C: CatalogSpec> Catalog<C> {
     /// use recourse::{
     ///     catalog::{Catalog, CatalogSpec},
     ///     diagnostic::NoEvidence,
-    ///     http::{HttpProblemType, ProblemOccurrence, Unauthorized},
+    ///     http::{BearerUnauthorized, HttpProblemType, ProblemOccurrence},
     /// };
     ///
     /// fn missing_challenge<C, D>(catalog: &Catalog<C>, occurrence: ProblemOccurrence)
     /// where
     ///     C: CatalogSpec,
-    ///     D: HttpProblemType<Catalog = C, Evidence = NoEvidence, Policy = Unauthorized>,
+    ///     D: HttpProblemType<Catalog = C, Evidence = NoEvidence, Policy = BearerUnauthorized>,
     /// {
     ///     let _ = catalog.try_problem::<D>(occurrence, NoEvidence);
     /// }
@@ -211,7 +211,10 @@ impl<C: CatalogSpec> Catalog<C> {
             });
         }
         let headers = D::Policy::headers(input).map_err(ProblemBuildError::Policy)?;
-        for required in D::Policy::REQUIRED_HEADERS {
+        for required in super::mandatory_headers(status.as_u16())
+            .iter()
+            .chain(D::Policy::REQUIRED_HEADERS)
+        {
             if !headers.contains_key(*required) {
                 return Err(ProblemBuildError::MissingPolicyHeader { name: required });
             }

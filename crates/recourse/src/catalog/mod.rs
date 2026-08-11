@@ -1,6 +1,7 @@
 //! Permanent catalog identity and namespace declarations.
 
 mod artifact;
+mod build_error;
 mod builder;
 mod code;
 mod issue;
@@ -10,9 +11,10 @@ mod schema;
 mod spec;
 
 pub use artifact::{ArtifactParseError, ArtifactWriteError, CatalogArtifact, CatalogDiagnostic};
+pub use build_error::CatalogBuildError;
 pub use builder::{Catalog, CatalogBuilder};
 pub use code::{Code, CodeNumber, CodeNumberError, CodeParseError};
-pub use issue::{CatalogBuildError, CatalogIssue};
+pub use issue::CatalogIssue;
 pub use lock::{
     AcceptanceError, AcceptanceMode, CatalogLock, CompatibilityChange, CompatibilityReport,
     CompatibilitySeverity, LockEntry, LockParseError, LockState, LockWriteError, Reservation,

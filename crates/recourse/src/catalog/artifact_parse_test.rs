@@ -86,3 +86,11 @@ fn parser_rejects_unregistered_problem_set_codes() {
 
     assert!(parse_value(&value).is_err());
 }
+
+#[test]
+fn parser_rejects_statuses_without_their_mandatory_headers() {
+    let mut value = encoded_value();
+    value["diagnostics"][0]["surfaces"]["http"]["status"] = serde_json::json!(401);
+
+    assert!(parse_value(&value).is_err());
+}

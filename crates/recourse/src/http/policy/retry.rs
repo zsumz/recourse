@@ -1,43 +1,78 @@
-//! Typed delay-seconds and HTTP-date `Retry-After` policies.
+//! Typed panic-free delay-seconds and HTTP-date `Retry-After` policies.
 
-use std::time::{Duration, SystemTime};
+use std::{
+    error::Error,
+    fmt::{self, Display, Formatter},
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
 use http::{HeaderMap, HeaderValue, header::RETRY_AFTER};
 
 use super::{HttpPolicy, PolicyError, sealed::Sealed};
 
-/// Valid `Retry-After` delay-seconds or IMF-fixdate value.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RetryAfter {
-    /// Delay from response generation, rounded up to whole seconds.
+const HTTP_DATE_UPPER_BOUND_SECONDS: u64 = 253_402_300_800;
+
+/// Validated `Retry-After` delay-seconds or IMF-fixdate value.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RetryAfter(RetryAfterValue);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum RetryAfterValue {
     After(Duration),
-    /// Absolute retry time rendered as an IMF-fixdate.
-    At(SystemTime),
+    At(String),
 }
 
 impl RetryAfter {
     /// Creates a delay-based retry value.
     pub const fn after(duration: Duration) -> Self {
-        Self::After(duration)
+        Self(RetryAfterValue::After(duration))
     }
 
-    /// Creates an absolute HTTP-date retry value.
-    pub const fn at(time: SystemTime) -> Self {
-        Self::At(time)
+    /// Validates and formats an absolute retry time without panicking.
+    pub fn try_at(time: SystemTime) -> Result<Self, RetryAfterError> {
+        let elapsed = time
+            .duration_since(UNIX_EPOCH)
+            .map_err(|_| RetryAfterError::BeforeUnixEpoch)?;
+        if elapsed.as_secs() >= HTTP_DATE_UPPER_BOUND_SECONDS {
+            return Err(RetryAfterError::AfterHttpDateRange);
+        }
+        Ok(Self(RetryAfterValue::At(httpdate::fmt_http_date(time))))
     }
 
     fn header_value(self) -> Result<HeaderValue, PolicyError> {
-        let value = match self {
-            Self::After(duration) => duration
+        let value = match self.0 {
+            RetryAfterValue::After(duration) => duration
                 .as_secs()
                 .saturating_add(u64::from(duration.subsec_nanos() > 0))
                 .to_string(),
-            Self::At(time) => httpdate::fmt_http_date(time),
+            RetryAfterValue::At(value) => value,
         };
         HeaderValue::from_str(&value)
             .map_err(|_| PolicyError::new("Retry-After is not a header value"))
     }
 }
+
+/// Reason an absolute retry time cannot be represented as an HTTP-date.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RetryAfterError {
+    /// HTTP dates cannot represent times before the Unix epoch.
+    BeforeUnixEpoch,
+    /// HTTP dates cannot represent the year 10000 or later.
+    AfterHttpDateRange,
+}
+
+impl Display for RetryAfterError {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::BeforeUnixEpoch => formatter.write_str("retry time is before the Unix epoch"),
+            Self::AfterHttpDateRange => {
+                formatter.write_str("retry time is after the supported HTTP-date range")
+            }
+        }
+    }
+}
+
+impl Error for RetryAfterError {}
 
 /// `429` or `503` policy requiring a valid `Retry-After` header.
 #[derive(Debug, Clone, Copy, Default)]
