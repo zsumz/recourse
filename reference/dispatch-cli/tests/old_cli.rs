@@ -85,6 +85,21 @@ fn known_code_with_a_spoofed_type_is_called_out_explicitly() {
 }
 
 #[test]
+fn known_code_with_wrong_transport_status_names_the_catalog_contract() {
+    let old_catalog = catalog().unwrap_or_else(|error| panic!("catalog must build: {error}"));
+    let received = receive(
+        br#"{"type":"https://dispatch.invalid/problems/DSP-1003","status":404,"code":"DSP-1003","evidence":{}}"#,
+        StatusCode::INTERNAL_SERVER_ERROR,
+    );
+    let rendered = render_problem(&old_catalog, &received)
+        .unwrap_or_else(|error| panic!("status fixture must render: {error}"));
+
+    assert!(
+        rendered.contains("Protocol issue: transport status 500 differs from catalog status 404")
+    );
+}
+
+#[test]
 fn malformed_identity_uses_an_explicit_fallback_without_losing_it() {
     let old_catalog = catalog().unwrap_or_else(|error| panic!("catalog must build: {error}"));
     let received = receive(

@@ -49,7 +49,10 @@ pub(crate) fn append_suggestions(rendered: &mut String, suggestions: &[String]) 
     }
 }
 
-pub(crate) fn append_issues(rendered: &mut String, issues: &[ProtocolIssue]) {
+pub(crate) fn append_issues<'a>(
+    rendered: &mut String,
+    issues: impl IntoIterator<Item = &'a ProtocolIssue>,
+) {
     for issue in issues {
         rendered.push_str("Protocol issue: ");
         append_issue(rendered, issue);
@@ -103,6 +106,32 @@ fn append_issue(rendered: &mut String, issue: &ProtocolIssue) {
             rendered.push_str(&transport.as_u16().to_string());
             rendered.push_str(" differs from body status ");
             rendered.push_str(&body.as_u16().to_string());
+        }
+        ProtocolIssue::UnexpectedTypeForCode { expected, received } => {
+            rendered.push_str("type URI ");
+            rendered.push_str(
+                &received
+                    .as_deref()
+                    .map_or_else(|| "<missing>".to_owned(), escape_terminal),
+            );
+            rendered.push_str(" differs from ");
+            rendered.push_str(expected);
+        }
+        ProtocolIssue::CatalogStatusMismatch {
+            expected,
+            transport,
+        } => {
+            rendered.push_str("transport status ");
+            rendered.push_str(&transport.as_u16().to_string());
+            rendered.push_str(" differs from catalog status ");
+            rendered.push_str(&expected.as_u16().to_string());
+        }
+        ProtocolIssue::MissingRequiredHeader { header } => {
+            rendered.push_str("missing required header ");
+            rendered.push_str(&escape_terminal(header));
+        }
+        ProtocolIssue::CodeNotRegisteredForHttp => {
+            rendered.push_str("known code is not registered for HTTP");
         }
     }
 }

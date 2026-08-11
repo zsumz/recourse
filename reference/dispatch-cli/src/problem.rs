@@ -2,15 +2,13 @@
 
 use dispatch_diagnostics::JobNotFound;
 use recourse::{
-    catalog::{Catalog, CatalogDiagnostic, CatalogSpec},
-    client::{Classification, ReceivedProblem, escape_terminal},
+    catalog::{Catalog, CatalogSpec},
+    client::{KnownProblemClassification, ProblemClassification, ReceivedProblem, escape_terminal},
 };
 
 use crate::{
     RenderError,
-    field::{
-        append_field, append_issues, append_raw, append_suggestions, append_type_issue, code_text,
-    },
+    field::{append_field, append_issues, append_raw, append_suggestions, code_text},
 };
 
 /// Renders one tolerant Problem using local definitions when available.
@@ -19,22 +17,23 @@ pub fn render_problem<C: CatalogSpec>(
     problem: &ReceivedProblem,
 ) -> Result<String, RenderError> {
     let mut rendered = match catalog.classify(problem) {
-        Classification::Known(definition) => render_known(definition, problem),
-        Classification::Unknown => render_unknown(problem),
+        ProblemClassification::Known(known) => render_known(&known, problem),
+        ProblemClassification::Unknown => render_unknown(problem),
     };
     append_raw(&mut rendered, problem.raw())?;
     Ok(rendered)
 }
 
-fn render_known(definition: &CatalogDiagnostic, problem: &ReceivedProblem) -> String {
+fn render_known(known: &KnownProblemClassification<'_>, problem: &ReceivedProblem) -> String {
+    let definition = known.diagnostic();
     let mut rendered = format!(
         "{} — {}\nHTTP {}\n",
         definition.code(),
         escape_terminal(definition.title()),
         problem.transport_status().as_u16()
     );
-    append_context(&mut rendered, problem);
-    append_type_issue(&mut rendered, definition, problem.type_uri());
+    append_context_fields(&mut rendered, problem);
+    append_issues(&mut rendered, known.protocol_issues());
     append_typed_job(&mut rendered, problem);
     rendered
 }
@@ -46,15 +45,15 @@ fn render_unknown(problem: &ReceivedProblem) -> String {
         problem.transport_status().as_u16()
     );
     append_field(&mut rendered, "Title", problem.title());
-    append_context(&mut rendered, problem);
+    append_context_fields(&mut rendered, problem);
+    append_issues(&mut rendered, problem.protocol_issues());
     rendered
 }
 
-fn append_context(rendered: &mut String, problem: &ReceivedProblem) {
+fn append_context_fields(rendered: &mut String, problem: &ReceivedProblem) {
     append_field(rendered, "Detail", problem.detail());
     append_field(rendered, "Instance", problem.instance());
     append_suggestions(rendered, problem.suggestions());
-    append_issues(rendered, problem.protocol_issues());
 }
 
 /// Reads the one known code whose evidence this client acts on.
