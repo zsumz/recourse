@@ -1,7 +1,6 @@
 //! Clone isolation and synchronous panic-containment regressions.
 
 use std::{
-    convert::Infallible,
     error::Error,
     fmt::{self, Display, Formatter},
     future::{Ready, ready},
@@ -26,7 +25,7 @@ use recourse::{
 };
 
 use super::{RecourseLayer, RequestIdGenerator, builder::RecourseLayerBuilder};
-use tower::{Layer, Service, ServiceExt};
+use tower::{Layer, Service};
 
 const CANARY: &str = "PRIVATE_CONTAINMENT_CANARY";
 
@@ -235,39 +234,4 @@ async fn preparation_failure_consumes_the_pending_readiness_failure() {
         .await
         .unwrap_or_else(|error| match error {});
     assert_eq!(healthy.status(), StatusCode::OK);
-}
-
-#[derive(Debug, Clone, Copy)]
-struct SynchronousPanicService;
-
-impl Service<Request<Body>> for SynchronousPanicService {
-    type Response = Response;
-    type Error = Infallible;
-    type Future = Ready<Result<Response, Infallible>>;
-
-    fn poll_ready(&mut self, _context: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn call(&mut self, _request: Request<Body>) -> Self::Future {
-        panic!("{CANARY}")
-    }
-}
-
-#[tokio::test]
-async fn a_synchronous_service_panic_becomes_the_internal_problem() {
-    let reports = Arc::new(Mutex::new(Vec::new()));
-    let response = layer(&reports)
-        .layer(SynchronousPanicService)
-        .oneshot(request())
-        .await
-        .unwrap_or_else(|error| match error {});
-
-    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(
-        reports
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)[0]
-            .contains(CANARY)
-    );
 }

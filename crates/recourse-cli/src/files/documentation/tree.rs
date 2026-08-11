@@ -8,6 +8,10 @@ use std::{
 
 use crate::error::CommandError;
 
+#[cfg(test)]
+#[path = "tests/recovery.rs"]
+mod recovery_test;
+
 pub(super) struct StagingTree {
     path: PathBuf,
 }
