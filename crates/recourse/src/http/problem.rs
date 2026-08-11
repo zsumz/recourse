@@ -1,14 +1,14 @@
 //! Strict typed Problem construction and canonical JSON encoding.
 
+mod encode;
 mod error;
 
-use std::any::type_name;
+use std::{any::type_name, sync::Arc};
 
-use http::{HeaderMap, HeaderValue, StatusCode, header::CONTENT_TYPE};
-use serde::Serialize;
+use http::{HeaderMap, HeaderValue, StatusCode};
 
 use crate::{
-    catalog::{Catalog, CatalogDiagnostic, CatalogSpec, Code},
+    catalog::{Catalog, CatalogDiagnostic, CatalogSpec, Code, DiagnosticValidators},
     diagnostic::{PublicEvidence, PublicText},
 };
 
@@ -30,6 +30,7 @@ pub struct Problem<E: PublicEvidence> {
     evidence: E,
     suggestions: Vec<String>,
     headers: HeaderMap,
+    evidence_validator: Arc<jsonschema::Validator>,
 }
 
 impl<E: PublicEvidence> Problem<E> {
@@ -47,6 +48,7 @@ impl<E: PublicEvidence> Problem<E> {
             evidence: parts.evidence,
             suggestions: parts.definition.suggestions().to_vec(),
             headers: parts.headers,
+            evidence_validator: parts.evidence_validator,
         }
     }
 
@@ -69,30 +71,6 @@ impl<E: PublicEvidence> Problem<E> {
     pub const fn evidence(&self) -> &E {
         &self.evidence
     }
-
-    /// Encodes the strict canonical Problem profile.
-    pub fn try_encode(&self) -> Result<EncodedProblem, ProblemEncodeError> {
-        let evidence = serde_json::to_value(&self.evidence)
-            .map_err(ProblemEncodeError::EvidenceSerialization)?;
-        if !evidence.is_object() {
-            return Err(ProblemEncodeError::EvidenceNotObject);
-        }
-        let instance = self.occurrence.instance().to_string();
-        let wire = ProblemWire {
-            type_uri: &self.type_uri,
-            title: &self.title,
-            status: self.status.as_u16(),
-            detail: &self.detail,
-            instance: &instance,
-            code: &self.code,
-            evidence: &evidence,
-            suggestions: &self.suggestions,
-        };
-        let body = serde_json::to_vec(&wire).map_err(ProblemEncodeError::BodySerialization)?;
-        let mut headers = self.headers.clone();
-        headers.insert(CONTENT_TYPE, PROBLEM_JSON);
-        Ok(EncodedProblem::new(self.status, headers, body))
-    }
 }
 
 struct ProblemParts<'a, E: PublicEvidence> {
@@ -102,19 +80,7 @@ struct ProblemParts<'a, E: PublicEvidence> {
     occurrence: ProblemOccurrence,
     evidence: E,
     headers: HeaderMap,
-}
-
-#[derive(Serialize)]
-struct ProblemWire<'a> {
-    #[serde(rename = "type")]
-    type_uri: &'a str,
-    title: &'a str,
-    status: u16,
-    detail: &'a str,
-    instance: &'a str,
-    code: &'a Code,
-    evidence: &'a serde_json::Value,
-    suggestions: &'a [String],
+    evidence_validator: Arc<jsonschema::Validator>,
 }
 
 impl<C: CatalogSpec> Catalog<C> {
@@ -219,6 +185,12 @@ impl<C: CatalogSpec> Catalog<C> {
                 return Err(ProblemBuildError::MissingPolicyHeader { name: required });
             }
         }
+        let evidence_validator = self
+            .validators(definition.number())
+            .map(DiagnosticValidators::evidence)
+            .ok_or_else(|| ProblemBuildError::ValidatorMissing {
+                code: definition.code().clone(),
+            })?;
         Ok(Problem::from_parts(ProblemParts {
             definition,
             status,
@@ -226,6 +198,7 @@ impl<C: CatalogSpec> Catalog<C> {
             occurrence,
             evidence,
             headers,
+            evidence_validator,
         }))
     }
 }

@@ -93,6 +93,15 @@ fn fixed_problem_matches_the_canonical_wire_fixture() {
         encoded.body(),
         fixture.strip_suffix(b"\n").unwrap_or(fixture)
     );
+    assert!(
+        crate::client::ReceivedProblem::from_slice(
+            encoded.status(),
+            encoded.headers(),
+            encoded.body(),
+            crate::wire::WireLimits::default(),
+        )
+        .is_ok()
+    );
 }
 
 #[test]

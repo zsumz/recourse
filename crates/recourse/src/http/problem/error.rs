@@ -6,6 +6,7 @@ use std::{
 };
 
 use crate::catalog::Code;
+use crate::wire::WireLimitError;
 
 use super::super::PolicyError;
 
@@ -38,6 +39,11 @@ pub enum ProblemBuildError {
         /// Missing canonical header name.
         name: &'static str,
     },
+    /// Validated catalog unexpectedly has no compiled evidence validator.
+    ValidatorMissing {
+        /// Diagnostic whose runtime contract is incomplete.
+        code: Code,
+    },
 }
 
 impl Display for ProblemBuildError {
@@ -59,6 +65,9 @@ impl Display for ProblemBuildError {
             Self::MissingPolicyHeader { name } => {
                 write!(formatter, "policy did not construct required header {name}")
             }
+            Self::ValidatorMissing { code } => {
+                write!(formatter, "{code} has no compiled evidence validator")
+            }
         }
     }
 }
@@ -79,6 +88,15 @@ pub enum ProblemEncodeError {
     EvidenceSerialization(serde_json::Error),
     /// Runtime evidence representation is not a JSON object.
     EvidenceNotObject,
+    /// Runtime evidence disagrees with the schema accepted into the catalog.
+    EvidenceSchemaMismatch {
+        /// JSON path of the first mismatch.
+        path: String,
+        /// Validator explanation.
+        reason: String,
+    },
+    /// Emitted JSON would exceed the shared protocol profile.
+    WireLimit(WireLimitError),
     /// Canonical top-level body serialization failed.
     BodySerialization(serde_json::Error),
 }
@@ -88,6 +106,13 @@ impl Display for ProblemEncodeError {
         match self {
             Self::EvidenceSerialization(error) => write!(formatter, "serialize evidence: {error}"),
             Self::EvidenceNotObject => formatter.write_str("public evidence must encode as object"),
+            Self::EvidenceSchemaMismatch { path, reason } => {
+                write!(
+                    formatter,
+                    "public evidence violates its schema at {path}: {reason}"
+                )
+            }
+            Self::WireLimit(error) => Display::fmt(error, formatter),
             Self::BodySerialization(error) => write!(formatter, "serialize Problem body: {error}"),
         }
     }
@@ -97,7 +122,8 @@ impl Error for ProblemEncodeError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             Self::EvidenceSerialization(error) | Self::BodySerialization(error) => Some(error),
-            Self::EvidenceNotObject => None,
+            Self::WireLimit(error) => Some(error),
+            Self::EvidenceNotObject | Self::EvidenceSchemaMismatch { .. } => None,
         }
     }
 }

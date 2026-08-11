@@ -1,14 +1,18 @@
 //! Strict durable-diagnostic construction and exact wire tests.
 
-use schemars::JsonSchema;
-use serde::Serialize;
+use std::borrow::Cow;
+
+use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
+use serde::{Serialize, Serializer, ser::SerializeMap};
 
 use crate::{
     catalog::{Catalog, CatalogSpec, CodeNumber},
     diagnostic::{DiagnosticType, PublicEvidence},
 };
 
-use super::{OperationDiagnostic, OperationDiagnosticId, OperationDiagnosticType};
+use super::{
+    OperationDiagnostic, OperationDiagnosticId, OperationDiagnosticType, OperationEncodeError,
+};
 
 enum TestCatalog {}
 
@@ -77,6 +81,7 @@ fn registered_operation_matches_the_canonical_wire_fixture() {
 
     let fixture = include_bytes!("../../tests/fixtures/wire/core-operation.json");
     assert_eq!(encoded, fixture.strip_suffix(b"\n").unwrap_or(fixture));
+    assert!(crate::client::decode_object(&encoded, crate::wire::WireLimits::default()).is_ok());
 }
 
 /// `serde_json::Value` compares members by name, so this pins the members and
@@ -116,4 +121,72 @@ fn operation_requires_explicit_surface_registration() {
     );
 
     assert!(result.is_err());
+}
+
+#[derive(Debug)]
+struct WrongImpact;
+
+impl Serialize for WrongImpact {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(1))?;
+        map.serialize_entry("created_artifacts", "many")?;
+        map.end()
+    }
+}
+
+impl JsonSchema for WrongImpact {
+    fn schema_name() -> Cow<'static, str> {
+        "WrongImpact".into()
+    }
+
+    fn json_schema(_generator: &mut SchemaGenerator) -> Schema {
+        json_schema!({
+            "type": "object",
+            "properties": {"created_artifacts": {"type": "integer"}},
+            "required": ["created_artifacts"],
+            "additionalProperties": false
+        })
+    }
+}
+
+impl PublicEvidence for WrongImpact {}
+
+enum DishonestImpact {}
+
+impl DiagnosticType for DishonestImpact {
+    type Catalog = TestCatalog;
+    type Evidence = FailureEvidence;
+
+    const NUMBER: CodeNumber = CodeNumber::new(1010);
+    const TITLE: &'static str = "Dishonest impact";
+    const DETAIL: &'static str = "Runtime impact disagrees with its schema.";
+    const SUGGESTIONS: &'static [&'static str] = &[];
+    const DOCS: &'static str = "Runtime impact conformance test.";
+}
+
+impl OperationDiagnosticType for DishonestImpact {
+    type Impact = WrongImpact;
+}
+
+#[test]
+fn operation_impact_must_match_its_precompiled_schema() {
+    let catalog = Catalog::<TestCatalog>::builder()
+        .operation::<DishonestImpact>()
+        .build()
+        .unwrap_or_else(|error| panic!("fixture catalog must build: {error}"));
+    let id = OperationDiagnosticId::try_new("dia_schema")
+        .unwrap_or_else(|error| panic!("fixture ID must validate: {error}"));
+    let error = catalog
+        .try_operation::<DishonestImpact>(id, FailureEvidence { attempt: 1 }, WrongImpact)
+        .ok()
+        .and_then(|diagnostic| diagnostic.try_encode().err());
+
+    assert!(matches!(
+        error,
+        Some(OperationEncodeError::ImpactSchemaMismatch { path, .. })
+            if path == "$/created_artifacts"
+    ));
 }

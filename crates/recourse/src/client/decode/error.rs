@@ -6,23 +6,7 @@ use std::{
 };
 
 /// Decode budget exceeded by untrusted input.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DecodeLimit {
-    /// Encoded response body bytes.
-    BodyBytes,
-    /// Nested object and array depth.
-    NestingDepth,
-    /// Properties in one object.
-    ObjectProperties,
-    /// Items in one array.
-    ArrayItems,
-    /// UTF-8 bytes in one key or string.
-    StringBytes,
-    /// Items in the top-level suggestions array.
-    Suggestions,
-    /// Items in the validation violations array.
-    Violations,
-}
+pub use crate::wire::WireLimit as DecodeLimit;
 
 /// Malformed or resource-exhausting diagnostic input.
 #[derive(Debug)]

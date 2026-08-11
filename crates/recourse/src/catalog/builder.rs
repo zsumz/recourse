@@ -9,9 +9,10 @@ use std::{any::TypeId, collections::BTreeMap, fmt, marker::PhantomData};
 
 use crate::{health::HealthFindingType, http::HttpProblemType, operation::OperationDiagnosticType};
 
+use super::validator::compile_all;
 use super::{
     CatalogArtifact, CatalogBuildError, CatalogDiagnostic, CatalogSpec, Code, CodeNumber,
-    ProblemSet,
+    DiagnosticValidators, ProblemSet,
 };
 use compile::compile_diagnostics;
 use problem_set::{compile_problem_sets, validate_problem_sets};
@@ -24,6 +25,7 @@ pub struct Catalog<C: CatalogSpec> {
     problems: BTreeMap<TypeId, CodeNumber>,
     operations: BTreeMap<TypeId, CodeNumber>,
     health: BTreeMap<TypeId, CodeNumber>,
+    validators: BTreeMap<CodeNumber, DiagnosticValidators>,
     marker: PhantomData<fn() -> C>,
 }
 
@@ -77,6 +79,10 @@ impl<C: CatalogSpec> Catalog<C> {
         self.definition(*number)
     }
 
+    pub(crate) fn validators(&self, number: CodeNumber) -> Option<&DiagnosticValidators> {
+        self.validators.get(&number)
+    }
+
     fn definition(&self, number: CodeNumber) -> Option<&CatalogDiagnostic> {
         self.artifact
             .diagnostics()
@@ -93,6 +99,7 @@ impl<C: CatalogSpec> fmt::Debug for Catalog<C> {
             .field("registered_problem_count", &self.problems.len())
             .field("registered_operation_count", &self.operations.len())
             .field("registered_health_count", &self.health.len())
+            .field("compiled_validator_count", &self.validators.len())
             .finish()
     }
 }
@@ -195,6 +202,7 @@ impl<C: CatalogSpec> CatalogBuilder<C> {
             .as_ref()
             .map(|value| compile_problem_sets(value.prefix, problem_sets))
             .unwrap_or_default();
+        let validators = compile_all(&diagnostics, &mut issues);
         if !issues.is_empty() {
             return Err(CatalogBuildError::new(issues));
         }
@@ -206,6 +214,7 @@ impl<C: CatalogSpec> CatalogBuilder<C> {
             problems,
             operations,
             health,
+            validators,
             marker: PhantomData,
         })
     }

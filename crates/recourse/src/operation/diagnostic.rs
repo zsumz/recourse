@@ -1,8 +1,8 @@
 //! Strict construction and canonical encoding for accepted-work failures.
 
-use std::any::type_name;
+mod encode;
 
-use serde::Serialize;
+use std::{any::type_name, sync::Arc};
 
 use crate::{
     catalog::{Catalog, CatalogSpec, Code},
@@ -24,6 +24,8 @@ pub struct OperationDiagnostic<E: PublicEvidence, I: PublicEvidence> {
     evidence: E,
     impact: I,
     suggestions: Vec<String>,
+    evidence_validator: Arc<jsonschema::Validator>,
+    impact_validator: Arc<jsonschema::Validator>,
 }
 
 impl<E: PublicEvidence, I: PublicEvidence> OperationDiagnostic<E, I> {
@@ -46,62 +48,6 @@ impl<E: PublicEvidence, I: PublicEvidence> OperationDiagnostic<E, I> {
     pub const fn impact(&self) -> &I {
         &self.impact
     }
-
-    /// Encodes the strict canonical durable-diagnostic profile.
-    pub fn try_encode(&self) -> Result<Vec<u8>, OperationEncodeError> {
-        serde_json::to_vec(&self.try_wire()?).map_err(OperationEncodeError::BodySerialization)
-    }
-
-    /// Builds the same canonical profile as a value for durable records.
-    ///
-    /// Applications that store or embed a diagnostic compose this value
-    /// directly instead of decoding [`OperationDiagnostic::try_encode`].
-    ///
-    /// The value holds the same members and values as
-    /// [`OperationDiagnostic::try_encode`], but member *order* is the order
-    /// `serde_json::Value` keeps (alphabetical), not the canonical byte order.
-    /// Serialize this value yourself only when byte-canonical order is not
-    /// required; use [`OperationDiagnostic::try_encode`] for canonical bytes.
-    pub fn try_encode_value(&self) -> Result<serde_json::Value, OperationEncodeError> {
-        serde_json::to_value(self.try_wire()?).map_err(OperationEncodeError::BodySerialization)
-    }
-
-    /// Validates evidence and impact once for both canonical representations.
-    fn try_wire(&self) -> Result<OperationWire<'_>, OperationEncodeError> {
-        let evidence = serde_json::to_value(&self.evidence)
-            .map_err(OperationEncodeError::EvidenceSerialization)?;
-        if !evidence.is_object() {
-            return Err(OperationEncodeError::EvidenceNotObject);
-        }
-        let impact = serde_json::to_value(&self.impact)
-            .map_err(OperationEncodeError::ImpactSerialization)?;
-        if !impact.is_object() {
-            return Err(OperationEncodeError::ImpactNotObject);
-        }
-        Ok(OperationWire {
-            id: &self.id,
-            type_uri: &self.type_uri,
-            code: &self.code,
-            title: &self.title,
-            detail: &self.detail,
-            evidence,
-            impact,
-            suggestions: &self.suggestions,
-        })
-    }
-}
-
-#[derive(Serialize)]
-struct OperationWire<'a> {
-    id: &'a OperationDiagnosticId,
-    #[serde(rename = "type")]
-    type_uri: &'a str,
-    code: &'a Code,
-    title: &'a str,
-    detail: &'a str,
-    evidence: serde_json::Value,
-    impact: serde_json::Value,
-    suggestions: &'a [String],
 }
 
 impl<C: CatalogSpec> Catalog<C> {
@@ -194,6 +140,16 @@ impl<C: CatalogSpec> Catalog<C> {
                 diagnostic: type_name::<D>(),
             },
         )?;
+        let validators = self.validators(definition.number()).ok_or_else(|| {
+            OperationBuildError::ValidatorsMissing {
+                code: definition.code().clone(),
+            }
+        })?;
+        let Some(impact_validator) = validators.impact() else {
+            return Err(OperationBuildError::ValidatorsMissing {
+                code: definition.code().clone(),
+            });
+        };
         Ok(OperationDiagnostic {
             id,
             type_uri: definition.type_uri().to_owned(),
@@ -203,6 +159,8 @@ impl<C: CatalogSpec> Catalog<C> {
             evidence,
             impact,
             suggestions: definition.suggestions().to_vec(),
+            evidence_validator: validators.evidence(),
+            impact_validator,
         })
     }
 }

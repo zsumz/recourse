@@ -1,11 +1,11 @@
 //! Strict construction and canonical encoding for current health findings.
 
-use std::any::type_name;
+mod encode;
 
-use serde::Serialize;
+use std::{any::type_name, sync::Arc};
 
 use crate::{
-    catalog::{Catalog, CatalogSpec, Code},
+    catalog::{Catalog, CatalogSpec, Code, DiagnosticValidators},
     diagnostic::PublicEvidence,
 };
 
@@ -26,6 +26,7 @@ pub struct HealthFinding<E: PublicEvidence> {
     observed_at: ObservationTime,
     evidence: E,
     suggestions: Vec<String>,
+    evidence_validator: Arc<jsonschema::Validator>,
 }
 
 impl<E: PublicEvidence> HealthFinding<E> {
@@ -53,59 +54,6 @@ impl<E: PublicEvidence> HealthFinding<E> {
     pub const fn evidence(&self) -> &E {
         &self.evidence
     }
-
-    /// Encodes the strict canonical health-finding profile.
-    pub fn try_encode(&self) -> Result<Vec<u8>, HealthEncodeError> {
-        serde_json::to_vec(&self.try_wire()?).map_err(HealthEncodeError::BodySerialization)
-    }
-
-    /// Builds the same canonical profile as a value for aggregate documents.
-    ///
-    /// Applications that publish a finding inside their own resource compose
-    /// this value directly instead of decoding [`HealthFinding::try_encode`].
-    ///
-    /// The value holds the same members and values as
-    /// [`HealthFinding::try_encode`], but member *order* is the order
-    /// `serde_json::Value` keeps (alphabetical), not the canonical byte order.
-    /// Serialize this value yourself only when byte-canonical order is not
-    /// required; use [`HealthFinding::try_encode`] for canonical bytes.
-    pub fn try_encode_value(&self) -> Result<serde_json::Value, HealthEncodeError> {
-        serde_json::to_value(self.try_wire()?).map_err(HealthEncodeError::BodySerialization)
-    }
-
-    /// Validates evidence once for both canonical representations.
-    fn try_wire(&self) -> Result<HealthWire<'_>, HealthEncodeError> {
-        let evidence = serde_json::to_value(&self.evidence)
-            .map_err(HealthEncodeError::EvidenceSerialization)?;
-        if !evidence.is_object() {
-            return Err(HealthEncodeError::EvidenceNotObject);
-        }
-        Ok(HealthWire {
-            id: &self.id,
-            type_uri: &self.type_uri,
-            code: &self.code,
-            title: &self.title,
-            detail: &self.detail,
-            severity: self.severity,
-            observed_at: &self.observed_at,
-            evidence,
-            suggestions: &self.suggestions,
-        })
-    }
-}
-
-#[derive(Serialize)]
-struct HealthWire<'a> {
-    id: &'a HealthFindingId,
-    #[serde(rename = "type")]
-    type_uri: &'a str,
-    code: &'a Code,
-    title: &'a str,
-    detail: &'a str,
-    severity: HealthSeverity,
-    observed_at: &'a ObservationTime,
-    evidence: serde_json::Value,
-    suggestions: &'a [String],
 }
 
 impl<C: CatalogSpec> Catalog<C> {
@@ -188,6 +136,12 @@ impl<C: CatalogSpec> Catalog<C> {
                 .ok_or(HealthBuildError::DiagnosticNotRegistered {
                     diagnostic: type_name::<D>(),
                 })?;
+        let evidence_validator = self
+            .validators(definition.number())
+            .map(DiagnosticValidators::evidence)
+            .ok_or_else(|| HealthBuildError::ValidatorMissing {
+                code: definition.code().clone(),
+            })?;
         Ok(HealthFinding {
             id,
             type_uri: definition.type_uri().to_owned(),
@@ -198,6 +152,7 @@ impl<C: CatalogSpec> Catalog<C> {
             observed_at,
             evidence,
             suggestions: definition.suggestions().to_vec(),
+            evidence_validator,
         })
     }
 }

@@ -29,6 +29,8 @@ mod policy_header_test;
 #[cfg(test)]
 mod policy_test;
 #[cfg(test)]
+mod problem_contract_test;
+#[cfg(test)]
 mod problem_header_test;
 #[cfg(test)]
 mod problem_test;

@@ -1,8 +1,8 @@
-//! Conservative configurable resource limits for untrusted diagnostic JSON.
+//! Default protocol resource budgets.
 
-/// Resource and shape budgets applied before semantic decoding.
+/// Resource and shape budgets shared by Recourse emitters and clients.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct DecodeLimits {
+pub struct WireLimits {
     body_bytes: usize,
     nesting_depth: usize,
     object_properties: usize,
@@ -12,7 +12,7 @@ pub struct DecodeLimits {
     violations: usize,
 }
 
-impl DecodeLimits {
+impl WireLimits {
     /// Default maximum encoded body size in bytes.
     pub const DEFAULT_MAX_BODY_BYTES: usize = 64 * 1024;
     /// Default maximum nested object or array depth.
@@ -77,36 +77,43 @@ impl DecodeLimits {
         self
     }
 
-    pub(crate) const fn max_body_bytes(self) -> usize {
+    /// Maximum encoded body size in bytes.
+    pub const fn max_body_bytes(self) -> usize {
         self.body_bytes
     }
 
-    pub(crate) const fn max_nesting_depth(self) -> usize {
+    /// Maximum nested object or array depth.
+    pub const fn max_nesting_depth(self) -> usize {
         self.nesting_depth
     }
 
-    pub(crate) const fn max_object_properties(self) -> usize {
+    /// Maximum properties in each object.
+    pub const fn max_object_properties(self) -> usize {
         self.object_properties
     }
 
-    pub(crate) const fn max_array_items(self) -> usize {
+    /// Maximum items in each array.
+    pub const fn max_array_items(self) -> usize {
         self.array_items
     }
 
-    pub(crate) const fn max_string_bytes(self) -> usize {
+    /// Maximum UTF-8 bytes in each key or string value.
+    pub const fn max_string_bytes(self) -> usize {
         self.string_bytes
     }
 
-    pub(crate) const fn max_suggestions(self) -> usize {
+    /// Maximum top-level caller suggestions.
+    pub const fn max_suggestions(self) -> usize {
         self.suggestions
     }
 
-    pub(crate) const fn max_violations(self) -> usize {
+    /// Maximum validation violations inside evidence.
+    pub const fn max_violations(self) -> usize {
         self.violations
     }
 }
 
-impl Default for DecodeLimits {
+impl Default for WireLimits {
     fn default() -> Self {
         Self {
             body_bytes: Self::DEFAULT_MAX_BODY_BYTES,

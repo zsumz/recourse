@@ -11,6 +11,7 @@ mod problem_set;
 mod schema;
 mod spec;
 mod type_uri;
+mod validator;
 
 pub use artifact::{ArtifactParseError, ArtifactWriteError, CatalogArtifact, CatalogDiagnostic};
 pub use build_error::CatalogBuildError;
@@ -30,6 +31,7 @@ pub(crate) use problem_set::valid_problem_set_id;
 pub use problem_set::{MAX_PROBLEM_SET_ID_BYTES, ProblemSet, ProblemSetBuilder};
 pub use spec::CatalogSpec;
 pub(crate) use type_uri::{valid_type_base, valid_type_uri};
+pub(crate) use validator::{DiagnosticValidators, validate as validate_value};
 
 #[cfg(test)]
 mod artifact_parse_test;
