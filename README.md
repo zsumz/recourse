@@ -141,8 +141,9 @@ scripts/check
 ```
 
 The gate tests, lints, packages, extracts, installs, and runs every publishable
-crate, including a Ballast-shaped external consumer. It does not publish or
-push.
+crate. Smoque drives a Ballast-shaped packaged consumer over real HTTP,
+including the terminal SSE failure path. This edge check requires Node 22.18 or
+newer. The gate does not publish or push.
 
 ## License
 

@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+cache=${NPM_CONFIG_CACHE:-/tmp/recourse-smoque-npm-cache}
+package=${SMOQUE_PACKAGE:-smoque@0.1.2}
+export NPM_CONFIG_CACHE=$cache
+
+cd "$repo_root"
+exec npx --yes "$package" run "$@"

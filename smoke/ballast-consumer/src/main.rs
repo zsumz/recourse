@@ -1,15 +1,16 @@
-//! External Ballast-shaped proof over extracted package artifacts.
+//! Packaged Ballast-shaped HTTP fixture exercised externally by Smoque.
 
 use std::{
+    env,
     error::Error,
     fmt::{self, Display, Formatter},
-    sync::{Arc, Mutex},
 };
 
 use axum::{
     Router,
-    body::{Body, to_bytes},
-    http::{Request, StatusCode, header::CONTENT_TYPE},
+    body::Body,
+    http::{HeaderValue, header::CONTENT_TYPE},
+    response::Response,
     routing::get,
 };
 use recourse::{
@@ -17,12 +18,11 @@ use recourse::{
     diagnostic::{DiagnosticType, NoEvidence, PublicEvidence},
     fault::PrivateReport,
     http::{Fixed, HttpProblemType},
-    observe::{FaultEvent, FaultReporter},
+    observe::{FaultEvent, FaultReporter, HttpObserver, ProblemEvent},
 };
 use recourse_axum::{HandlerResult, ProblemContext, RecourseLayer};
 use schemars::JsonSchema;
 use serde::Serialize;
-use tower::ServiceExt;
 
 const PRIVATE_CANARY: &str = "postgres://private-ballast-token";
 
@@ -89,15 +89,22 @@ impl Display for CanaryError {
 
 impl Error for CanaryError {}
 
-#[derive(Debug, Clone, Default)]
-struct Reports(Arc<Mutex<Vec<String>>>);
+#[derive(Debug, Clone, Copy)]
+struct ConsoleHooks;
 
-impl FaultReporter for Reports {
+impl HttpObserver for ConsoleHooks {
+    fn on_problem(&self, event: &ProblemEvent) {
+        println!("observed-problem: {}", event.code());
+    }
+
+    fn on_fault(&self, event: &FaultEvent) {
+        println!("observed-fault: {}", event.problem_metadata().code());
+    }
+}
+
+impl FaultReporter for ConsoleHooks {
     fn report_fault(&self, _event: &FaultEvent, report: &PrivateReport) {
-        self.0
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .push(report.to_string());
+        eprintln!("private-report: {report}");
     }
 }
 
@@ -114,64 +121,53 @@ async fn fault(problems: ProblemContext<BallastCatalog>) -> HandlerResult<&'stat
     ))
 }
 
-fn app(reports: Reports) -> Result<Router, Box<dyn Error>> {
+async fn stream_failure(problems: ProblemContext<BallastCatalog>) -> Response {
+    let failure = problems.problem::<DeploymentNotFound>(DeploymentEvidence {
+        deployment_id: "dep_stream".to_owned(),
+    });
+    let Some(problem) = failure.into_encoded_problem() else {
+        return Response::new(Body::empty());
+    };
+    let (_, _, encoded) = problem.into_parts();
+    let mut event = b"event: problem\ndata: ".to_vec();
+    event.extend_from_slice(&encoded);
+    event.extend_from_slice(b"\n\n");
+
+    let mut response = Response::new(Body::from(event));
+    response.headers_mut().insert(
+        CONTENT_TYPE,
+        HeaderValue::from_static("text/event-stream; charset=utf-8"),
+    );
+    response
+}
+
+async fn ready() -> &'static str {
+    "ready"
+}
+
+fn app() -> Result<Router, Box<dyn Error>> {
     let catalog = Catalog::<BallastCatalog>::builder()
         .problem::<DeploymentNotFound>()
         .problem::<InternalError>()
         .build()?;
     let layer = RecourseLayer::builder(catalog)
         .internal::<InternalError>()
-        .fault_reporter(reports)
+        .observer(ConsoleHooks)
+        .fault_reporter(ConsoleHooks)
         .build()?;
     Ok(Router::new()
+        .route("/ready", get(ready))
         .route("/deployments/{id}", get(missing))
         .route("/fault", get(fault))
+        .route("/stream", get(stream_failure))
         .layer(layer))
-}
-
-async fn assert_public_problem(app: Router) -> Result<(), Box<dyn Error>> {
-    let request = Request::builder()
-        .uri("/deployments/dep_missing")
-        .header("x-request-id", "ballast-smoke-request")
-        .body(Body::empty())?;
-    let response = app.oneshot(request).await?;
-
-    assert_eq!(response.status(), StatusCode::NOT_FOUND);
-    assert_eq!(response.headers()[CONTENT_TYPE], "application/problem+json");
-    assert_eq!(response.headers()["x-request-id"], "ballast-smoke-request");
-    let body = to_bytes(response.into_body(), 4096).await?;
-    let problem: serde_json::Value = serde_json::from_slice(&body)?;
-    assert_eq!(problem["type"], "https://ballast.invalid/problems/BAL-1001");
-    assert_eq!(problem["code"], "BAL-1001");
-    assert_eq!(problem["status"], 404);
-    assert_eq!(problem["evidence"]["deployment_id"], "dep_missing");
-    Ok(())
-}
-
-async fn assert_private_fault(app: Router, reports: &Reports) -> Result<(), Box<dyn Error>> {
-    let request = Request::builder()
-        .uri("/fault")
-        .header("x-request-id", "ballast-fault-request")
-        .body(Body::empty())?;
-    let response = app.oneshot(request).await?;
-    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
-    let body = to_bytes(response.into_body(), 4096).await?;
-    assert!(!String::from_utf8_lossy(&body).contains(PRIVATE_CANARY));
-    let reports = reports
-        .0
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    assert_eq!(reports.len(), 1);
-    assert!(reports[0].contains(PRIVATE_CANARY));
-    Ok(())
 }
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let reports = Reports::default();
-    let app = app(reports.clone())?;
-    assert_public_problem(app.clone()).await?;
-    assert_private_fault(app, &reports).await?;
-    println!("packaged Ballast consumer passed");
+    let port = env::var("PORT")?.parse::<u16>()?;
+    let listener = tokio::net::TcpListener::bind(("127.0.0.1", port)).await?;
+    println!("ready on {port}");
+    axum::serve(listener, app()?).await?;
     Ok(())
 }

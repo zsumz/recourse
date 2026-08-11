@@ -51,20 +51,19 @@ fn workspace_and_public_dependencies_use_release_version() {
 }
 
 #[test]
-fn canonical_gate_proves_extracted_packages_and_installed_cli() {
+fn canonical_gate_proves_extracted_packages_through_smoque() {
     let workspace = workspace_root();
     let canonical = read(&workspace.join("scripts/check"));
     let packages = read(&workspace.join("scripts/check-packages"));
-    let consumer = read(&workspace.join("smoke/ballast-consumer/src/main.rs"));
+    let smoke = read(&workspace.join("smoke/package.smoke.mts"));
 
     assert!(canonical.contains("scripts/check-packages"));
     for required in [
         "cargo \"${package_args[@]}\"",
         "tar -xzf",
-        "cargo run --manifest-path",
         "cargo test --manifest-path",
-        "cargo install",
-        "cargo-recourse",
+        "RECOURSE_CORE_PACKAGE",
+        "scripts/smoke-smoque smoke/package.smoke.mts --ci",
         "--offline",
     ] {
         assert!(
@@ -73,15 +72,17 @@ fn canonical_gate_proves_extracted_packages_and_installed_cli() {
         );
     }
     for required in [
-        "BallastCatalog",
-        "DeploymentNotFound",
+        "from \"smoque\"",
+        "t.process.start",
+        "t.http.get",
+        "cargo-recourse",
         "application/problem+json",
         "PRIVATE_CANARY",
-        "FaultReporter",
+        "event-stream",
     ] {
         assert!(
-            consumer.contains(required),
-            "consumer smoke omits {required:?}"
+            smoke.contains(required),
+            "Smoque package smoke omits {required:?}"
         );
     }
 }

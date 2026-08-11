@@ -72,28 +72,9 @@ test_extracted_package \
   --config "patch.crates-io.recourse.path=\"$core_path\""
 echo "packaged crate self-tests passed"
 
-consumer_path="$package_work/ballast-consumer"
-mkdir -p "$consumer_path/src"
-sed \
-  -e "s|@RECOURSE_PATH@|$core_path|g" \
-  -e "s|@RECOURSE_AXUM_PATH@|$axum_path|g" \
-  smoke/ballast-consumer/Cargo.toml.template >"$consumer_path/Cargo.toml"
-cp smoke/ballast-consumer/src/main.rs "$consumer_path/src/main.rs"
-
-CARGO_TARGET_DIR="$repo_root/target/package-consumer" \
-  cargo run --manifest-path "$consumer_path/Cargo.toml" --offline --quiet
-
-install_root="$package_work/install"
-CARGO_TARGET_DIR="$repo_root/target/package-consumer" \
-  cargo install \
-  --path "$cli_path" \
-  --root "$install_root" \
-  --offline \
-  --quiet \
-  --config "patch.crates-io.recourse.path=\"$core_path\""
-
-actual_version=$("$install_root/bin/cargo-recourse" --version)
-if [[ "$actual_version" != "cargo-recourse $release_version" ]]; then
-  echo "unexpected installed CLI version: $actual_version" >&2
-  exit 1
-fi
+RECOURSE_CORE_PACKAGE=$core_path \
+RECOURSE_AXUM_PACKAGE=$axum_path \
+RECOURSE_CLI_PACKAGE=$cli_path \
+RECOURSE_PACKAGE_TARGET=$repo_root/target/package-consumer \
+RECOURSE_RELEASE_VERSION=$release_version \
+  scripts/smoke-smoque smoke/package.smoke.mts --ci
