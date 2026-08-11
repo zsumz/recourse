@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+cd "$repo_root"
+
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+cargo test --workspace --all-features --locked
+scripts/check-dispatch-artifacts
+# Framework-neutral gate: builds and runs the neutral suites, including the
+# rule-11 conformance tests, without ever building recourse-axum.
+cargo test \
+  -p recourse \
+  -p dispatch-model \
+  -p dispatch-diagnostics \
+  -p dispatch-service \
+  -p dispatch-worker \
+  -p dispatch-cli \
+  -p dispatch-catalog \
+  --all-targets \
+  --locked
+RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps
+scripts/check-packages
+git diff --check
