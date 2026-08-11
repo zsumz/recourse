@@ -129,6 +129,17 @@ fn crate_page_readmes_contain_first_use_instructions() {
     }
 }
 
+#[test]
+fn binary_only_cli_documentation_points_to_its_readme() {
+    let manifest = parse(&workspace_root().join("crates/recourse-cli/Cargo.toml"));
+
+    assert!(manifest.get("lib").is_none());
+    assert_eq!(
+        manifest["package"]["documentation"].as_str(),
+        Some("https://github.com/zsumz/recourse/tree/main/crates/recourse-cli#readme")
+    );
+}
+
 fn assert_public_manifest(path: &Path, name: &str) {
     let manifest = parse(path);
     let package = &manifest["package"];
