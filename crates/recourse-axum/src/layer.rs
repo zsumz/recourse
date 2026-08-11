@@ -135,22 +135,25 @@ where
     }
 
     fn call(&mut self, mut request: Request<Body>) -> Self::Future {
+        let readiness_failure = self.readiness_failure.take();
         let prepared = catch_unwind(AssertUnwindSafe(|| scope::prepare(&request, &self.config)));
         let (problem_context, correlation_id) = match prepared {
             Ok(Ok(prepared)) => prepared,
             Ok(Err(error)) => {
-                let response = preparation_failure(&request, &self.config, error);
+                let response =
+                    preparation_failure(&request, &self.config, error, readiness_failure);
                 return Box::pin(async move { Ok(response) });
             }
             Err(payload) => {
                 let panic = RecoveredPanic::from_payload(payload.as_ref());
-                let response = preparation_failure(&request, &self.config, panic);
+                let response =
+                    preparation_failure(&request, &self.config, panic, readiness_failure);
                 return Box::pin(async move { Ok(response) });
             }
         };
         let panic_context = problem_context.clone();
         let header = self.config.request_id_header.clone();
-        if let Some(report) = self.readiness_failure.take() {
+        if let Some(report) = readiness_failure {
             let mut response = problem_context.internal_fault(report).into_response();
             echo_request_id(&mut response, &header, &correlation_id);
             return Box::pin(async move { Ok(response) });
@@ -198,17 +201,16 @@ fn preparation_failure<C: CatalogSpec>(
     request: &Request<Body>,
     config: &LayerConfig<C>,
     error: impl Error + Send + Sync + 'static,
+    readiness_failure: Option<PrivateReport>,
 ) -> Response {
     let Some(occurrence) = scope::emergency_occurrence() else {
         return config.runtime.empty_internal().into_response();
     };
     let correlation_id = occurrence.correlation_id().clone();
     let context = scope::event_context(request);
-    let failure = config.runtime.fallback(
-        &occurrence,
-        &context,
-        vec![private_report(error, "request_scope_preparation")],
-    );
+    let mut reports = readiness_failure.into_iter().collect::<Vec<_>>();
+    reports.push(private_report(error, "request_scope_preparation"));
+    let failure = config.runtime.fallback(&occurrence, &context, reports);
     let mut response = failure.into_response();
     echo_request_id(&mut response, &config.request_id_header, &correlation_id);
     response

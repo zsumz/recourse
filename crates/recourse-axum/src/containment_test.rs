@@ -5,7 +5,10 @@ use std::{
     error::Error,
     fmt::{self, Display, Formatter},
     future::{Ready, ready},
-    sync::{Arc, Mutex},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
     task::{Context, Poll, Waker},
 };
 
@@ -18,11 +21,11 @@ use recourse::{
     catalog::{Catalog, CatalogSpec, CodeNumber},
     diagnostic::{DiagnosticType, NoEvidence},
     fault::PrivateReport,
-    http::{Fixed, HttpProblemType},
+    http::{CorrelationId, CorrelationIdError, Fixed, HttpProblemType},
     observe::{FaultEvent, FaultReporter},
 };
 
-use super::{RecourseLayer, builder::RecourseLayerBuilder};
+use super::{RecourseLayer, RequestIdGenerator, builder::RecourseLayerBuilder};
 use tower::{Layer, Service, ServiceExt};
 
 const CANARY: &str = "PRIVATE_CONTAINMENT_CANARY";
@@ -167,6 +170,71 @@ async fn readiness_failures_belong_only_to_the_polled_clone() {
             .len(),
         1
     );
+}
+
+#[derive(Debug, Default)]
+struct FailOnceRequestIds(AtomicBool);
+
+impl RequestIdGenerator for FailOnceRequestIds {
+    fn generate(&self) -> Result<CorrelationId, CorrelationIdError> {
+        if !self.0.swap(true, Ordering::Relaxed) {
+            return CorrelationId::new("");
+        }
+        CorrelationId::new("request-after-preparation-failure")
+    }
+}
+
+#[derive(Debug, Default)]
+struct FailReadinessOnce(bool);
+
+impl Service<Request<Body>> for FailReadinessOnce {
+    type Response = Response;
+    type Error = CanaryError;
+    type Future = Ready<Result<Response, CanaryError>>;
+
+    fn poll_ready(&mut self, _context: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        if !self.0 {
+            self.0 = true;
+            return Poll::Ready(Err(CanaryError));
+        }
+        Poll::Ready(Ok(()))
+    }
+
+    fn call(&mut self, _request: Request<Body>) -> Self::Future {
+        ready(Ok(StatusCode::OK.into_response()))
+    }
+}
+
+#[tokio::test]
+async fn preparation_failure_consumes_the_pending_readiness_failure() {
+    let reports = Arc::new(Mutex::new(Vec::new()));
+    let configured = builder()
+        .request_ids(FailOnceRequestIds::default())
+        .fault_reporter(RecordingReporter(Arc::clone(&reports)))
+        .build()
+        .unwrap_or_else(|error| panic!("test layer must build: {error}"));
+    let mut service = configured.layer(FailReadinessOnce::default());
+    let mut context = Context::from_waker(Waker::noop());
+
+    assert!(matches!(
+        service.poll_ready(&mut context),
+        Poll::Ready(Ok(()))
+    ));
+    let failed = service
+        .call(request())
+        .await
+        .unwrap_or_else(|error| match error {});
+    assert_eq!(failed.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+    assert!(matches!(
+        service.poll_ready(&mut context),
+        Poll::Ready(Ok(()))
+    ));
+    let healthy = service
+        .call(request())
+        .await
+        .unwrap_or_else(|error| match error {});
+    assert_eq!(healthy.status(), StatusCode::OK);
 }
 
 #[derive(Debug, Clone, Copy)]
