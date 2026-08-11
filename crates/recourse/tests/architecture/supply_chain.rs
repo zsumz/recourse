@@ -56,7 +56,14 @@ fn assert_license_policy(policy: &toml::Value) {
 
     assert_eq!(
         allowed,
-        BTreeSet::from(["Apache-2.0", "MIT", "Unicode-3.0"])
+        BTreeSet::from([
+            "Apache-2.0",
+            "BSD-3-Clause",
+            "MIT",
+            "MIT-0",
+            "Unicode-3.0",
+            "Zlib",
+        ])
     );
     assert_eq!(policy["licenses"]["include-dev"].as_bool(), Some(true));
     assert_eq!(
@@ -67,12 +74,7 @@ fn assert_license_policy(policy: &toml::Value) {
         policy["licenses"]["unused-license-exception"].as_str(),
         Some("deny")
     );
-    let exceptions = policy["licenses"]["exceptions"]
-        .as_array()
-        .unwrap_or_else(|| panic!("license exceptions must be an array"));
-    assert_eq!(exceptions.len(), 1);
-    assert_eq!(exceptions[0]["crate"].as_str(), Some("matchit"));
-    assert_eq!(exceptions[0]["allow"][0].as_str(), Some("BSD-3-Clause"));
+    assert!(policy["licenses"].get("exceptions").is_none());
     assert_eq!(
         policy["licenses"]["private"]["ignore"].as_bool(),
         Some(false)

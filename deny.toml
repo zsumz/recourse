@@ -13,8 +13,7 @@ ignore = []
 include-dev = true
 unused-allowed-license = "deny"
 unused-license-exception = "deny"
-allow = ["Apache-2.0", "MIT", "Unicode-3.0"]
-exceptions = [{ crate = "matchit", allow = ["BSD-3-Clause"] }]
+allow = ["Apache-2.0", "BSD-3-Clause", "MIT", "MIT-0", "Unicode-3.0", "Zlib"]
 
 [licenses.private]
 ignore = false
