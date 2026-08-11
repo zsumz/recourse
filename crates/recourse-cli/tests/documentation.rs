@@ -168,6 +168,49 @@ fn retired_history_gets_a_separate_page() {
     assert!(page.contains("## Historical impact"));
 }
 
+#[cfg(unix)]
+#[test]
+fn symlinked_output_is_rejected_without_changing_the_live_tree() {
+    use std::os::unix::fs::symlink;
+
+    let (sandbox, current, lock) = accepted_fixture();
+    let out = sandbox.path("symlinked-problems");
+    let initial = docs(&current, &lock, &out);
+    assert!(initial.status.success(), "{}", stderr(&initial));
+    let index = fs::read(out.join("index.md"))
+        .unwrap_or_else(|error| panic!("read initial index: {error}"));
+    let outside = sandbox.path("outside");
+    fs::create_dir(&outside).unwrap_or_else(|error| panic!("create outside directory: {error}"));
+    fs::write(outside.join("sentinel.md"), "outside\n")
+        .unwrap_or_else(|error| panic!("write outside sentinel: {error}"));
+    symlink(&outside, out.join("redirect"))
+        .unwrap_or_else(|error| panic!("create hostile symlink: {error}"));
+
+    let rejected = docs(&current, &lock, &out);
+
+    assert!(!rejected.status.success());
+    assert!(stderr(&rejected).contains("symlinks are not allowed"));
+    assert_eq!(
+        fs::read(out.join("index.md"))
+            .unwrap_or_else(|error| panic!("read preserved index: {error}")),
+        index
+    );
+    assert_eq!(
+        fs::read_to_string(outside.join("sentinel.md"))
+            .unwrap_or_else(|error| panic!("read outside sentinel: {error}")),
+        "outside\n"
+    );
+    assert!(
+        fs::read_dir(&sandbox.0)
+            .unwrap_or_else(|error| panic!("list sandbox: {error}"))
+            .all(|entry| !entry
+                .unwrap_or_else(|error| panic!("read sandbox entry: {error}"))
+                .file_name()
+                .to_string_lossy()
+                .starts_with(".recourse-stage-"))
+    );
+}
+
 fn docs(current: &Path, lock: &Path, out: &Path) -> Output {
     run(&[
         Path::new("docs"),

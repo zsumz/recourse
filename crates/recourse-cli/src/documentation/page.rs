@@ -24,14 +24,23 @@ pub(super) fn active(
 pub(super) fn retired(
     diagnostic: &CatalogDiagnostic,
     reason: &str,
-    replacement: Option<&Code>,
+    replacements: &[&Code],
 ) -> Result<String, serde_json::Error> {
     let mut body = heading(diagnostic, "Retired");
     body.push_str("## Retirement\n\n");
     body.push_str(&markdown::text(reason));
     body.push_str("\n\n");
-    if let Some(code) = replacement {
-        let _ = write!(body, "Replacement: `{code}`\n\n");
+    if let Some((first, rest)) = replacements.split_first() {
+        let label = if rest.is_empty() {
+            "Replacement"
+        } else {
+            "Replacement chain"
+        };
+        let _ = write!(body, "{label}: `{first}`");
+        for code in rest {
+            let _ = write!(body, " → `{code}`");
+        }
+        body.push_str("\n\n");
     }
     push_surfaces(&mut body, diagnostic);
     body.push_str(&schema::section(

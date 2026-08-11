@@ -37,6 +37,10 @@ pub(crate) enum CommandError {
         path: PathBuf,
         entry: String,
     },
+    UnsafeDocumentation {
+        path: PathBuf,
+        reason: &'static str,
+    },
     Json(serde_json::Error),
 }
 
@@ -67,6 +71,13 @@ impl Display for CommandError {
                 "generated-doc manifest `{}` contains unsafe path `{entry}`",
                 path.display()
             ),
+            Self::UnsafeDocumentation { path, reason } => {
+                write!(
+                    formatter,
+                    "unsafe documentation path `{}`: {reason}",
+                    path.display()
+                )
+            }
             Self::Json(source) => write!(formatter, "encode JSON output: {source}"),
         }
     }
@@ -81,7 +92,9 @@ impl Error for CommandError {
             Self::EncodeLock(source) => Some(source),
             Self::Retire(source) => Some(source),
             Self::Json(source) => Some(source),
-            Self::InputTooLarge { .. } | Self::InvalidManifest { .. } => None,
+            Self::InputTooLarge { .. }
+            | Self::InvalidManifest { .. }
+            | Self::UnsafeDocumentation { .. } => None,
         }
     }
 }

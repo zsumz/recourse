@@ -7,7 +7,7 @@ mod schema;
 
 use std::{collections::BTreeMap, path::PathBuf};
 
-use recourse::catalog::{CatalogArtifact, CatalogDiagnostic, CatalogLock, LockEntry};
+use recourse::catalog::{CatalogArtifact, CatalogDiagnostic, CatalogLock, Code, LockEntry};
 
 #[derive(Debug)]
 pub(crate) struct GeneratedDocumentation {
@@ -36,7 +36,11 @@ impl GeneratedDocumentation {
             {
                 pages.insert(
                     PathBuf::from(format!("retired/{}.md", diagnostic.code())),
-                    page::retired(diagnostic, reason, replacement.as_ref())?,
+                    page::retired(
+                        diagnostic,
+                        reason,
+                        &replacement_chain(lock, replacement.as_ref()),
+                    )?,
                 );
             }
         }
@@ -46,6 +50,23 @@ impl GeneratedDocumentation {
     pub(crate) fn pages(&self) -> &BTreeMap<PathBuf, String> {
         &self.pages
     }
+}
+
+fn replacement_chain<'a>(lock: &'a CatalogLock, first: Option<&'a Code>) -> Vec<&'a Code> {
+    let mut chain = Vec::new();
+    let mut current = first;
+    for _ in 0..lock.entries().len() {
+        let Some(code) = current else {
+            break;
+        };
+        chain.push(code);
+        current = lock
+            .entries()
+            .iter()
+            .find(|entry| entry.code() == code)
+            .and_then(LockEntry::replacement);
+    }
+    chain
 }
 
 pub(crate) fn explain(
