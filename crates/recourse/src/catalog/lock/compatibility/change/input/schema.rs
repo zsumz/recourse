@@ -74,6 +74,20 @@ impl ChangeInput {
             "Restore the shape or mint a new code.",
         )
     }
+
+    pub(crate) fn rejected_optional_property(code: &Code, path: &str) -> Self {
+        Self::at(
+            "REC-COMPAT-017",
+            CompatibilitySeverity::Breaking,
+            code,
+            path,
+        )
+        .shapes("rejected by previous schema", "optional property")
+        .guidance(
+            "The accepted schema rejects unknown properties, so existing validators reject this field.",
+            "Allow unknown properties in the accepted schema or mint a new code.",
+        )
+    }
 }
 
 const fn requiredness(value: bool) -> &'static str {

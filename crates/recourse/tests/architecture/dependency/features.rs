@@ -31,3 +31,15 @@ fn axum_adapter_enables_only_its_owned_framework_capability() {
         Some("matched-path")
     );
 }
+
+#[test]
+fn schema_validation_is_offline_by_construction() {
+    let workspace = workspace_root();
+    let root = read(&workspace.join("Cargo.toml"))
+        .parse::<toml::Value>()
+        .unwrap_or_else(|error| panic!("parse workspace manifest: {error}"));
+    assert_eq!(
+        root["workspace"]["dependencies"]["jsonschema"]["default-features"].as_bool(),
+        Some(false)
+    );
+}

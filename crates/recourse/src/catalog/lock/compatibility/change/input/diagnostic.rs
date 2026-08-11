@@ -19,17 +19,17 @@ impl ChangeInput {
         )
     }
 
-    pub(crate) fn metadata_improved(code: &Code) -> Self {
+    pub(crate) fn guidance_changed(code: &Code) -> Self {
         Self::at(
             "REC-COMPAT-007",
             CompatibilitySeverity::Compatible,
             code,
             "guidance",
         )
-        .shapes("accepted wording", "updated wording")
+        .shapes("accepted guidance", "changed guidance")
         .guidance(
-            "Detail, suggestions, and documentation may improve.",
-            "Accept the wording.",
+            "Caller guidance is not machine-readable protocol behavior.",
+            "Review and accept the guidance change.",
         )
     }
 

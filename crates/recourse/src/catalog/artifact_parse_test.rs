@@ -103,3 +103,15 @@ fn parser_rejects_statuses_without_their_mandatory_headers() {
 
     assert!(parse_value(&value).is_err());
 }
+
+#[test]
+fn parser_reapplies_static_metadata_bounds() {
+    let mut control = encoded_value();
+    control["diagnostics"][0]["detail"] = serde_json::json!("unsafe\u{7}detail");
+    assert!(parse_value(&control).is_err());
+
+    let mut suggestions = encoded_value();
+    suggestions["diagnostics"][0]["suggestions"] =
+        serde_json::json!(vec!["help"; super::MAX_SUGGESTIONS + 1]);
+    assert!(parse_value(&suggestions).is_err());
+}

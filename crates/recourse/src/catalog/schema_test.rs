@@ -70,3 +70,16 @@ fn built_in_validation_evidence_fits_the_profile() {
         Some(serde_json::json!(100))
     );
 }
+
+#[test]
+fn malformed_keyword_values_and_patterns_are_rejected() {
+    for invalid in [
+        serde_json::json!({"type": "object", "properties": {"x": {"type": "string", "maxLength": "many"}}}),
+        serde_json::json!({"type": "object", "properties": {"x": {"type": "array", "uniqueItems": "yes"}}}),
+        serde_json::json!({"type": "object", "properties": {"x": {"type": "number", "multipleOf": 0}}}),
+        serde_json::json!({"type": "object", "properties": {"x": {"type": "string", "pattern": "["}}}),
+        serde_json::json!({"type": "object", "properties": {"x": {"type": ["string", "string"]}}}),
+    ] {
+        assert!(schema::validate_artifact(&invalid).is_err(), "{invalid}");
+    }
+}

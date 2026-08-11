@@ -189,7 +189,7 @@ fn diagnostic_and_surface_additions_are_compatible() {
 }
 
 #[test]
-fn every_guidance_field_may_improve_compatibly() {
+fn every_guidance_field_may_change_compatibly() {
     for field in ["detail", "suggestions", "documentation_markdown"] {
         let current = mutate(|value| match field {
             "detail" => value["diagnostics"][0][field] = serde_json::json!("Improved detail."),

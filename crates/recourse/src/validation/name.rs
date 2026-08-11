@@ -10,9 +10,9 @@ use http::header::HeaderName as HttpHeaderName;
 use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::{Deserialize, Deserializer, Serialize, de::Error as _};
 
-use crate::diagnostic::contains_control_character;
+use crate::diagnostic::{contains_control_character, count_characters};
 
-const MAX_PARAMETER_NAME_BYTES: usize = 128;
+const MAX_PARAMETER_NAME_CHARS: usize = 128;
 // Longest name `HeaderName::new` accepts, so no literal outruns its own type.
 const MAX_FIELD_NAME_BYTES: usize = 65_535;
 
@@ -28,10 +28,9 @@ impl ParameterName {
         if value.is_empty() {
             return Err(ParameterNameError::Empty);
         }
-        if value.len() > MAX_PARAMETER_NAME_BYTES {
-            return Err(ParameterNameError::TooLong {
-                actual_bytes: value.len(),
-            });
+        let actual_chars = value.chars().count();
+        if actual_chars > MAX_PARAMETER_NAME_CHARS {
+            return Err(ParameterNameError::TooLong { actual_chars });
         }
         if let Some((character_index, _)) =
             value.chars().enumerate().find(|(_, ch)| ch.is_control())
@@ -54,8 +53,8 @@ impl ParameterName {
         let bytes = value.as_bytes();
         assert!(!bytes.is_empty(), "parameter name must not be empty");
         assert!(
-            bytes.len() <= MAX_PARAMETER_NAME_BYTES,
-            "parameter name exceeds its encoded byte budget"
+            count_characters(bytes) <= MAX_PARAMETER_NAME_CHARS,
+            "parameter name exceeds its character budget"
         );
         assert!(
             !contains_control_character(bytes),
@@ -95,7 +94,8 @@ impl JsonSchema for ParameterName {
         json_schema!({
             "type": "string",
             "minLength": 1,
-            "maxLength": MAX_PARAMETER_NAME_BYTES
+            "maxLength": MAX_PARAMETER_NAME_CHARS,
+            "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F]*$"
         })
     }
 }
@@ -105,10 +105,10 @@ impl JsonSchema for ParameterName {
 pub enum ParameterNameError {
     /// Parameter name is empty.
     Empty,
-    /// Encoded UTF-8 exceeds the public name budget.
+    /// Parameter name exceeds the public character budget.
     TooLong {
-        /// Actual encoded byte length.
-        actual_bytes: usize,
+        /// Actual character length.
+        actual_chars: usize,
     },
     /// Parameter name contains a control character.
     ControlCharacter {
@@ -121,9 +121,9 @@ impl Display for ParameterNameError {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Self::Empty => formatter.write_str("parameter name must not be empty"),
-            Self::TooLong { actual_bytes } => write!(
+            Self::TooLong { actual_chars } => write!(
                 formatter,
-                "parameter name is {actual_bytes} bytes; maximum is {MAX_PARAMETER_NAME_BYTES}"
+                "parameter name is {actual_chars} characters; maximum is {MAX_PARAMETER_NAME_CHARS}"
             ),
             Self::ControlCharacter { character_index } => write!(
                 formatter,

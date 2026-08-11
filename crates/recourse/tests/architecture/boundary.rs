@@ -25,6 +25,7 @@ fn core_production_dependencies_are_framework_and_runtime_neutral() {
         "fluent-uri".to_owned(),
         "http".to_owned(),
         "httpdate".to_owned(),
+        "jsonschema".to_owned(),
         "schemars".to_owned(),
         "serde".to_owned(),
         "serde_json".to_owned(),

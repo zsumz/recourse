@@ -6,6 +6,7 @@ mod builder;
 mod code;
 mod issue;
 mod lock;
+mod metadata;
 mod problem_set;
 mod schema;
 mod spec;
@@ -20,6 +21,10 @@ pub use lock::{
     AcceptanceError, AcceptanceMode, CatalogLock, CompatibilityChange, CompatibilityReport,
     CompatibilitySeverity, LockEntry, LockParseError, LockState, LockWriteError, Reservation,
     ReservationError, RetirementError,
+};
+pub use metadata::{
+    MAX_DETAIL_CHARS, MAX_DOCUMENTATION_CHARS, MAX_SUGGESTION_CHARS, MAX_SUGGESTIONS,
+    MAX_TITLE_CHARS,
 };
 pub(crate) use problem_set::valid_problem_set_id;
 pub use problem_set::{MAX_PROBLEM_SET_ID_BYTES, ProblemSet, ProblemSetBuilder};
@@ -44,6 +49,8 @@ mod compatibility_schema_test;
 mod compatibility_test;
 #[cfg(test)]
 mod lock_test;
+#[cfg(test)]
+mod metadata_test;
 #[cfg(test)]
 mod problem_set_test;
 #[cfg(test)]

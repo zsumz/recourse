@@ -17,8 +17,21 @@ fn parameter_names_are_bounded_public_text() {
     ));
     assert!(matches!(
         ParameterName::new("x".repeat(129)),
-        Err(ParameterNameError::TooLong { actual_bytes: 129 })
+        Err(ParameterNameError::TooLong { actual_chars: 129 })
     ));
+}
+
+#[test]
+fn parameter_schema_and_runtime_agree_for_multibyte_and_control_text() {
+    let schema = schemars::schema_for!(ParameterName).to_value();
+    let validator = jsonschema::draft202012::new(&schema)
+        .unwrap_or_else(|error| panic!("ParameterName schema must compile: {error}"));
+    for value in ["é".repeat(128), "é".repeat(129), "line\nfeed".into()] {
+        assert_eq!(
+            ParameterName::new(value.clone()).is_ok(),
+            validator.is_valid(&serde_json::json!(value))
+        );
+    }
 }
 
 #[test]

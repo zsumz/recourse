@@ -96,22 +96,16 @@ fn validate_diagnostic(
             "must be derived from code and type base",
         );
     }
-    if [
-        diagnostic.title.as_str(),
-        diagnostic.detail.as_str(),
-        diagnostic.documentation_markdown.as_str(),
-    ]
-    .iter()
-    .any(|value| value.trim().is_empty())
+    if let Some(violation) = crate::catalog::metadata::validate(
+        &diagnostic.title,
+        &diagnostic.detail,
+        &diagnostic.suggestions,
+        &diagnostic.documentation_markdown,
+    )
+    .into_iter()
+    .next()
     {
-        return invalid(&path, "title, detail, and documentation must be nonempty");
-    }
-    if diagnostic
-        .suggestions
-        .iter()
-        .any(|value| value.trim().is_empty())
-    {
-        return invalid(&format!("{path}.suggestions"), "entries must be nonempty");
+        return invalid(&format!("{path}.{}", violation.field), &violation.reason);
     }
     validate_schemas(diagnostic, &path)?;
     surface::validate(diagnostic, &path)

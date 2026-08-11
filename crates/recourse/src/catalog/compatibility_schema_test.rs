@@ -119,6 +119,26 @@ fn impact_schemas_follow_the_same_conservative_rules() {
     }));
 }
 
+#[test]
+fn optional_addition_breaks_when_the_accepted_schema_rejects_unknown_fields() {
+    let previous = artifact(serde_json::json!({
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+    }));
+    let current = artifact(serde_json::json!({
+        "type": "object",
+        "properties": {"added": {"type": "string"}},
+        "additionalProperties": false
+    }));
+    let report = CatalogLock::from_artifact(&previous).check(&current);
+
+    assert!(report.has_breaking());
+    assert!(report.changes().iter().any(|change| {
+        change.id() == "REC-COMPAT-017" && change.path() == "evidence_schema.properties.added"
+    }));
+}
+
 fn with_impact(schema: &serde_json::Value) -> CatalogArtifact {
     let baseline = artifact(serde_json::json!({"type": "object"}));
     let mut value = serde_json::to_value(baseline)

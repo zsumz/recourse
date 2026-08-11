@@ -40,6 +40,7 @@ fn compare_properties(
     let old = object_keyword(previous, "properties").unwrap_or(&empty);
     let new = object_keyword(current, "properties").unwrap_or(&empty);
     let required = required_fields(current);
+    let accepted_by_previous = accepts_unknown_properties(previous);
     for (name, schema) in old {
         let field_path = format!("{path}.properties.{name}");
         match new.get(name) {
@@ -51,11 +52,19 @@ fn compare_properties(
         let field_path = format!("{path}.properties.{name}");
         let change = if required.contains(name.as_str()) {
             ChangeInput::required_property(code, &field_path)
-        } else {
+        } else if accepted_by_previous {
             ChangeInput::optional_property(code, &field_path)
+        } else {
+            ChangeInput::rejected_optional_property(code, &field_path)
         };
         push(changes, change);
     }
+}
+
+fn accepts_unknown_properties(object: &Map<String, Value>) -> bool {
+    object
+        .get("additionalProperties")
+        .is_none_or(|value| value == &Value::Bool(true))
 }
 
 fn compare_requiredness(

@@ -7,7 +7,8 @@ use http::StatusCode;
 use super::registration::Registration;
 use crate::{
     catalog::{
-        CatalogIssue, CatalogSpec, Code, CodeNumber, artifact::CatalogIdentity, valid_type_base,
+        CatalogIssue, CatalogSpec, Code, CodeNumber, artifact::CatalogIdentity, metadata,
+        valid_type_base,
     },
     http::mandatory_headers,
 };
@@ -71,27 +72,17 @@ pub(super) fn validate_registrations(
 }
 
 fn validate_registration(registration: &Registration, issues: &mut Vec<CatalogIssue>) {
-    for (field, value) in [
-        ("title", registration.title),
-        ("detail", registration.detail),
-        ("documentation", registration.docs),
-    ] {
-        if value.trim().is_empty() {
-            issues.push(CatalogIssue::InvalidMetadata {
-                number: registration.number,
-                field,
-                reason: "must not be empty".into(),
-            });
-        }
-    }
-    for suggestion in registration.suggestions {
-        if suggestion.trim().is_empty() {
-            issues.push(CatalogIssue::InvalidMetadata {
-                number: registration.number,
-                field: "suggestions",
-                reason: "entries must not be empty".into(),
-            });
-        }
+    for violation in metadata::validate(
+        registration.title,
+        registration.detail,
+        registration.suggestions,
+        registration.docs,
+    ) {
+        issues.push(CatalogIssue::InvalidMetadata {
+            number: registration.number,
+            field: violation.field,
+            reason: violation.reason,
+        });
     }
     if let Err(violation) = &registration.evidence_schema {
         issues.push(CatalogIssue::UnsupportedEvidenceSchema {

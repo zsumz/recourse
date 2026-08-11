@@ -22,6 +22,7 @@ exclude = [
 fluent-uri.workspace = true
 http.workspace = true
 httpdate.workspace = true
+jsonschema.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true

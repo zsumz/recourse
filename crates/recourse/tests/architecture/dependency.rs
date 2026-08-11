@@ -25,6 +25,7 @@ const RULES: &[DependencyRule] = &[
             "fluent-uri",
             "http",
             "httpdate",
+            "jsonschema",
             "schemars",
             "serde",
             "serde_json",

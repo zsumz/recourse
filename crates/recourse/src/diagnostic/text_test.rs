@@ -2,7 +2,7 @@
 
 use schemars::schema_for;
 
-use super::{DEFAULT_PUBLIC_TEXT_BYTES, PublicText, PublicTextError};
+use super::{DEFAULT_PUBLIC_TEXT_CHARS, PublicText, PublicTextError};
 
 #[test]
 fn public_text_round_trips_as_a_json_string() {
@@ -26,10 +26,10 @@ fn public_text_round_trips_as_a_json_string() {
 fn text_rejects_empty_overlong_and_control_values() {
     assert_eq!(PublicText::new(""), Err(PublicTextError::Empty));
     assert_eq!(
-        PublicText::with_max_bytes("four", 3),
+        PublicText::with_max_chars("four", 3),
         Err(PublicTextError::TooLong {
-            actual_bytes: 4,
-            max_bytes: 3,
+            actual_chars: 4,
+            max_chars: 3,
         })
     );
     assert_eq!(
@@ -37,15 +37,15 @@ fn text_rejects_empty_overlong_and_control_values() {
         Err(PublicTextError::ControlCharacter { character_index: 8 })
     );
     assert_eq!(
-        PublicText::with_max_bytes("text", 0),
+        PublicText::with_max_chars("text", 0),
         Err(PublicTextError::ZeroLimit)
     );
 }
 
 #[test]
-fn byte_budget_is_explicit_for_multibyte_text() {
-    assert!(PublicText::with_max_bytes("é", 1).is_err());
-    assert!(PublicText::with_max_bytes("é", 2).is_ok());
+fn character_budget_accepts_multibyte_text_without_schema_drift() {
+    assert!(PublicText::with_max_chars("é", 1).is_ok());
+    assert!(PublicText::with_max_chars("éé", 1).is_err());
 }
 
 #[test]
@@ -55,6 +55,28 @@ fn generated_schema_carries_default_bounds() {
     assert_eq!(schema.get("minLength"), Some(&serde_json::json!(1)));
     assert_eq!(
         schema.get("maxLength"),
-        Some(&serde_json::json!(DEFAULT_PUBLIC_TEXT_BYTES))
+        Some(&serde_json::json!(DEFAULT_PUBLIC_TEXT_CHARS))
     );
+}
+
+#[test]
+fn generated_schema_and_runtime_agree_at_text_boundaries() {
+    let schema = schema_for!(PublicText).to_value();
+    let validator = jsonschema::draft202012::new(&schema)
+        .unwrap_or_else(|error| panic!("PublicText schema must compile: {error}"));
+    let ascii_limit = "a".repeat(DEFAULT_PUBLIC_TEXT_CHARS);
+    let multibyte_limit = "é".repeat(DEFAULT_PUBLIC_TEXT_CHARS);
+    let over_limit = "é".repeat(DEFAULT_PUBLIC_TEXT_CHARS + 1);
+
+    for value in [
+        ascii_limit,
+        multibyte_limit,
+        over_limit,
+        "line\nfeed".into(),
+    ] {
+        assert_eq!(
+            PublicText::new(value.clone()).is_ok(),
+            validator.is_valid(&serde_json::json!(value))
+        );
+    }
 }

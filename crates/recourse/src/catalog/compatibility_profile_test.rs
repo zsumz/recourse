@@ -33,7 +33,7 @@ fn profile_names_every_implemented_and_exercised_rule() {
 
     assert_eq!(profile_ids, implemented_ids);
     assert!(profile_ids.is_subset(&behavior_ids));
-    assert_eq!(profile_ids.len(), 16);
+    assert_eq!(profile_ids.len(), 17);
 }
 
 fn stable_ids(source: &str) -> BTreeSet<&str> {

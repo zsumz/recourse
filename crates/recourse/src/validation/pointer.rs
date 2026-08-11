@@ -110,7 +110,7 @@ impl JsonSchema for JsonPointer {
     fn json_schema(_generator: &mut SchemaGenerator) -> Schema {
         json_schema!({
             "type": "string",
-            "pattern": "^(?:/(?:[^~]|~[01])*)*$"
+            "pattern": "^(?:/(?:[^\\u0000-\\u001F\\u007F-\\u009F~]|~[01])*)*$"
         })
     }
 }

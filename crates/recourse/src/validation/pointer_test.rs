@@ -33,3 +33,16 @@ fn pointer_json_decoding_revalidates_input() {
     assert!(serde_json::from_str::<JsonPointer>("\"/valid\"").is_ok());
     assert!(serde_json::from_str::<JsonPointer>("\"invalid\"").is_err());
 }
+
+#[test]
+fn pointer_schema_and_runtime_both_reject_controls() {
+    let schema = schemars::schema_for!(JsonPointer).to_value();
+    let validator = jsonschema::draft202012::new(&schema)
+        .unwrap_or_else(|error| panic!("JsonPointer schema must compile: {error}"));
+    for value in ["", "/é", "/line\nfeed", "/bad~2escape"] {
+        assert_eq!(
+            JsonPointer::new(value).is_ok(),
+            validator.is_valid(&serde_json::json!(value))
+        );
+    }
+}

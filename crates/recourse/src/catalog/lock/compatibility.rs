@@ -99,7 +99,7 @@ fn compare_diagnostic(
         || previous.suggestions() != current.suggestions()
         || previous.documentation_markdown() != current.documentation_markdown()
     {
-        push(changes, ChangeInput::metadata_improved(code));
+        push(changes, ChangeInput::guidance_changed(code));
     }
     schema::compare(
         code,

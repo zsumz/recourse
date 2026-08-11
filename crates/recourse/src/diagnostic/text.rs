@@ -9,8 +9,8 @@ use std::{
 use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::{Deserialize, Deserializer, Serialize, de::Error as _};
 
-/// Default maximum encoded UTF-8 byte length for public prose.
-pub const DEFAULT_PUBLIC_TEXT_BYTES: usize = 1_024;
+/// Default maximum character length for public prose.
+pub const DEFAULT_PUBLIC_TEXT_CHARS: usize = 1_024;
 
 /// Bounded caller-visible prose that contains no control characters.
 ///
@@ -21,9 +21,9 @@ pub const DEFAULT_PUBLIC_TEXT_BYTES: usize = 1_024;
 pub struct PublicText(Cow<'static, str>);
 
 impl PublicText {
-    /// Validates text against [`DEFAULT_PUBLIC_TEXT_BYTES`].
+    /// Validates text against [`DEFAULT_PUBLIC_TEXT_CHARS`].
     pub fn new(value: impl Into<String>) -> Result<Self, PublicTextError> {
-        Self::with_max_bytes(value, DEFAULT_PUBLIC_TEXT_BYTES)
+        Self::with_max_chars(value, DEFAULT_PUBLIC_TEXT_CHARS)
     }
 
     /// Accepts a literal, rejecting invalid prose while the crate compiles.
@@ -45,7 +45,7 @@ impl PublicText {
     ///
     /// # Panics
     ///
-    /// Panics when `value` is empty, exceeds [`DEFAULT_PUBLIC_TEXT_BYTES`], or
+    /// Panics when `value` is empty, exceeds [`DEFAULT_PUBLIC_TEXT_CHARS`], or
     /// contains a control character. Bound the result to a `const` item to turn
     /// those panics into compile errors, and use [`PublicText::new`] for text
     /// that arrives at runtime.
@@ -53,8 +53,8 @@ impl PublicText {
         let bytes = value.as_bytes();
         assert!(!bytes.is_empty(), "public text must not be empty");
         assert!(
-            bytes.len() <= DEFAULT_PUBLIC_TEXT_BYTES,
-            "public text exceeds its encoded byte budget"
+            count_characters(bytes) <= DEFAULT_PUBLIC_TEXT_CHARS,
+            "public text exceeds its character budget"
         );
         assert!(
             !contains_control_character(bytes),
@@ -63,22 +63,23 @@ impl PublicText {
         Self(Cow::Borrowed(value))
     }
 
-    /// Validates text against an explicit encoded UTF-8 byte limit.
-    pub fn with_max_bytes(
+    /// Validates text against an explicit character limit.
+    pub fn with_max_chars(
         value: impl Into<String>,
-        max_bytes: usize,
+        max_chars: usize,
     ) -> Result<Self, PublicTextError> {
         let value = value.into();
-        if max_bytes == 0 {
+        if max_chars == 0 {
             return Err(PublicTextError::ZeroLimit);
         }
         if value.is_empty() {
             return Err(PublicTextError::Empty);
         }
-        if value.len() > max_bytes {
+        let actual_chars = value.chars().count();
+        if actual_chars > max_chars {
             return Err(PublicTextError::TooLong {
-                actual_bytes: value.len(),
-                max_bytes,
+                actual_chars,
+                max_chars,
             });
         }
         if let Some((character_index, _)) =
@@ -126,7 +127,8 @@ impl JsonSchema for PublicText {
         json_schema!({
             "type": "string",
             "minLength": 1,
-            "maxLength": DEFAULT_PUBLIC_TEXT_BYTES
+            "maxLength": DEFAULT_PUBLIC_TEXT_CHARS,
+            "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F]*$"
         })
     }
 }
@@ -151,6 +153,19 @@ pub(crate) const fn contains_control_character(bytes: &[u8]) -> bool {
     false
 }
 
+/// Counts Unicode scalar values in a known-valid UTF-8 string from const code.
+pub(crate) const fn count_characters(bytes: &[u8]) -> usize {
+    let mut index = 0;
+    let mut count = 0;
+    while index < bytes.len() {
+        if !matches!(bytes[index], 0x80..=0xbf) {
+            count += 1;
+        }
+        index += 1;
+    }
+    count
+}
+
 /// Reason dynamic public prose was rejected.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PublicTextError {
@@ -158,12 +173,12 @@ pub enum PublicTextError {
     ZeroLimit,
     /// Public prose is empty.
     Empty,
-    /// Encoded UTF-8 exceeds its configured byte budget.
+    /// Text exceeds its configured character budget.
     TooLong {
-        /// Actual encoded byte length.
-        actual_bytes: usize,
-        /// Configured maximum encoded byte length.
-        max_bytes: usize,
+        /// Actual character length.
+        actual_chars: usize,
+        /// Configured maximum character length.
+        max_chars: usize,
     },
     /// Public prose contains a control character.
     ControlCharacter {
@@ -175,14 +190,14 @@ pub enum PublicTextError {
 impl Display for PublicTextError {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Self::ZeroLimit => formatter.write_str("public text byte limit must be positive"),
+            Self::ZeroLimit => formatter.write_str("public text character limit must be positive"),
             Self::Empty => formatter.write_str("public text must not be empty"),
             Self::TooLong {
-                actual_bytes,
-                max_bytes,
+                actual_chars,
+                max_chars,
             } => write!(
                 formatter,
-                "public text is {actual_bytes} bytes; maximum is {max_bytes}"
+                "public text is {actual_chars} characters; maximum is {max_chars}"
             ),
             Self::ControlCharacter { character_index } => write!(
                 formatter,
