@@ -13,6 +13,7 @@ cargo recourse --help
 cargo recourse check --current diagnostics/catalog.json --lock diagnostics/catalog.lock
 cargo recourse accept --current diagnostics/catalog.json --lock diagnostics/catalog.lock
 cargo recourse reserve --lock diagnostics/catalog.lock
+cargo recourse retire --lock diagnostics/catalog.lock DSP-1004 --reason "Superseded" --replacement DSP-1017
 cargo recourse explain --current diagnostics/catalog.json DSP-1004
 cargo recourse docs --current diagnostics/catalog.json --lock diagnostics/catalog.lock --out docs/problems
 ```
@@ -22,9 +23,9 @@ and structured output under `--format json`. Breaking changes require
 `--acknowledge-breaking`; forbidden namespace or tombstone violations can never
 be accepted.
 
-The package name follows the `recourse-*` family. The executable intentionally
-keeps Cargo's subcommand convention: installing `recourse-cli` provides
-`cargo-recourse`, which users invoke as `cargo recourse`.
+The package name follows the `recourse-*` family. The executable keeps Cargo's
+subcommand convention: installing `recourse-cli` provides `cargo-recourse`,
+which users invoke as `cargo recourse`.
 
 See the [repository](https://github.com/zsumz/recourse) for executable catalog
 fixtures, compatibility tests, and the Dispatch reference packages.

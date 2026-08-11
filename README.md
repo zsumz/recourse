@@ -3,7 +3,13 @@
 </p>
 
 <p align="center">
-  <strong>Governed diagnostics for Rust applications and services.</strong>
+  <strong>Versioned failure contracts for Rust services.</strong>
+</p>
+
+<p align="center">
+  Declare a failure once. Recourse keeps its code, schema, HTTP behavior,
+  documentation, and compatibility history in sync—without exposing private
+  error context.
 </p>
 
 <p align="center">
@@ -11,17 +17,13 @@
 </p>
 
 <p align="center">
-  Declare failures once. Keep codes, schemas, HTTP behavior, catalogs, and compatibility in sync.
-</p>
-
-<p align="center">
   <a href="#install">Install</a>
   <span> · </span>
-  <a href="#example">Example</a>
+  <a href="#five-minute-loop">Five-minute loop</a>
   <span> · </span>
   <a href="#model">Model</a>
   <span> · </span>
-  <a href="#features">Features</a>
+  <a href="#why-recourse">Why Recourse</a>
   <span> · </span>
   <a href="#packages">Packages</a>
   <span> · </span>
@@ -31,6 +33,8 @@
 <br />
 
 ## Install
+
+Pin release candidates exactly:
 
 ```sh
 cargo add recourse@=0.0.1-rc.2
@@ -44,44 +48,115 @@ cargo add recourse-axum@=0.0.1-rc.2
 
 The core package has no async runtime or application-framework dependency.
 
-## Example
+## Five-minute loop
 
-A diagnostic declaration gives a failure a permanent code and type URI, typed
-public evidence, HTTP policy, and human guidance. The Dispatch reference service
-uses those declarations to produce responses like this:
+Start with typed public evidence and one permanent declaration. The complete
+compiling example lives in the
+[Dispatch reference service](./reference/dispatch-diagnostics/src/problem/job_not_found.rs).
 
-```http
-HTTP/1.1 404 Not Found
-content-type: application/problem+json
-x-request-id: jobs-test-request
+```rust
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct JobNotFoundEvidence {
+    pub job_id: JobId,
+}
+
+impl PublicEvidence for JobNotFoundEvidence {}
+
+pub enum JobNotFound {}
+
+impl DiagnosticType for JobNotFound {
+    type Catalog = DispatchCatalog;
+    type Evidence = JobNotFoundEvidence;
+
+    const NUMBER: CodeNumber = CodeNumber::new(1003);
+    const TITLE: &'static str = "Job not found";
+    const DETAIL: &'static str = "No job exists for the supplied identifier.";
+    const SUGGESTIONS: &'static [&'static str] = &["Check the job identifier."];
+    const DOCS: &'static str = "Verify the identifier before retrying.";
+}
+
+impl HttpProblemType for JobNotFound {
+    type Policy = Fixed<404>;
+}
 ```
+
+Register it explicitly, then return it through the Axum request context:
+
+```rust
+let catalog = Catalog::<DispatchCatalog>::builder()
+    .problem::<JobNotFound>()
+    .build()?;
+
+Err(problems.problem::<JobNotFound>(JobNotFoundEvidence { job_id }))
+```
+
+The full registration and handler are
+[`catalog.rs`](./reference/dispatch-diagnostics/src/catalog.rs) and
+[`jobs.rs`](./reference/dispatch-api-axum/src/jobs.rs). Emit and accept the
+initial catalog once:
+
+```sh
+cargo install recourse-cli --version 0.0.1-rc.2 --locked
+cargo run -p dispatch-catalog > diagnostics/catalog.json
+cargo recourse accept \
+  --current diagnostics/catalog.json \
+  --lock diagnostics/catalog.lock
+```
+
+Run the reference API and request an unknown job:
+
+```sh
+cargo run -p dispatch-api-axum
+curl -i \
+  -H 'authorization: Bearer dispatch-demo' \
+  http://127.0.0.1:3000/jobs/job_01K00000000000000000000000
+```
+
+The response is a strict RFC 9457 Problem with the governed identity and typed
+evidence:
 
 ```json
 {
   "type": "https://dispatch.invalid/problems/DSP-1003",
   "title": "Job not found",
   "status": 404,
-  "detail": "No job exists for the supplied identifier.",
-  "instance": "https://api.dispatch.invalid/problem-occurrences/jobs-test-request",
   "code": "DSP-1003",
   "evidence": {
     "job_id": "job_01K00000000000000000000000"
-  },
-  "suggestions": [
-    "Check the job identifier for transcription errors.",
-    "Create a job before requesting its status."
-  ]
+  }
 }
 ```
 
-Servers construct this contract strictly. Clients decode it tolerantly within
-explicit size, depth, and member limits. Private source errors never become
-public evidence.
+Now add a required `trace_id: String` to `JobNotFoundEvidence`, regenerate the
+catalog, and check it without updating the lock:
+
+```sh
+cargo run -p dispatch-catalog > diagnostics/catalog.json
+cargo recourse check \
+  --current diagnostics/catalog.json \
+  --lock diagnostics/catalog.lock
+```
+
+Recourse exits unsuccessfully with the contract break and its remedy:
+
+```text
+error[REC-COMPAT-013]: Existing emitters may not provide the new field.
+  diagnostic  DSP-1003
+  path        evidence_schema.properties.trace_id
+  previous    absent
+  current     required
+
+Make it optional or mint a new code.
+```
+
+That loop—declaration, response, artifact, lock, compatibility decision—is the
+product. Private source errors travel through a separate, non-serializable
+reporting path and cannot become evidence by accident.
 
 ## Model
 
-Most error libraries help return an error body. Recourse governs the contract
-around a failure and keeps that contract stable as a system changes.
+Most Problem Details libraries help return an error body. Recourse governs the
+contract around a publicly observable failure as the system changes.
 
 ```text
 diagnostic declarations
@@ -95,9 +170,25 @@ diagnostic declarations
  source errors ──────────► PrivateReport ─────────► application reporter
 ```
 
-The public and private paths use different types. Catalog registration is
-explicit, and retired identities remain tombstoned so old codes cannot be
-silently reused.
+One diagnostic identity can survive an immediate HTTP failure, a failure
+recorded after asynchronous work was accepted, and a health finding describing
+present system state. Each surface keeps its own envelope and semantics.
+
+## Why Recourse
+
+| Concern | Basic Problem crate | Recourse |
+| --- | ---: | ---: |
+| Serialize an RFC 9457 body | Yes | Yes |
+| Permanent code and type identity | Manual | Governed |
+| Typed evidence schema | Manual | Built in |
+| Public/private separation | Convention | Type boundary |
+| Compatibility history | No | Lock and tombstones |
+| Tolerant bounded client | Usually no | Built in |
+| Generated type documentation | Usually no | Built in |
+
+Recourse is the contract layer around publicly observable failures—not a
+replacement for `thiserror`, an observability backend, or only a nicer Problem
+builder.
 
 ## Features
 
@@ -118,7 +209,7 @@ silently reused.
 | [`recourse-cli`](./crates/recourse-cli/) | Catalog checks, lock updates, explanations, and generated diagnostic pages |
 
 The framework-neutral and Axum [Dispatch reference packages](./reference/)
-exercise the public APIs across HTTP, background-work, CLI, catalog, and
+exercise the public APIs across HTTP, background work, CLI, catalog, and
 compatibility boundaries.
 
 ## CLI
@@ -141,9 +232,15 @@ scripts/check
 ```
 
 The gate tests, lints, packages, extracts, installs, and runs every publishable
-crate. Smoque drives a Ballast-shaped packaged consumer over real HTTP,
-including the terminal SSE failure path. This edge check requires Node 22.18 or
-newer. The gate does not publish or push.
+crate. Smoque drives an external consumer built only from packaged archives
+over real HTTP, including the terminal SSE failure path. This edge check
+requires Node 22.18 or newer. The gate does not publish or push.
+
+## Project
+
+[Changelog](./CHANGELOG.md) · [Contributing](./CONTRIBUTING.md) ·
+[Support](./SUPPORT.md) · [Security](./SECURITY.md) ·
+[Releasing](./RELEASING.md)
 
 ## License
 

@@ -1,7 +1,7 @@
 # recourse
 
-`recourse` is the framework-neutral core of the Recourse governed diagnostics
-protocol.
+`recourse` is the framework-neutral core for versioned failure contracts in
+Rust services.
 
 ```toml
 [dependencies]

@@ -7,10 +7,10 @@ authors.workspace = true
 license.workspace = true
 repository.workspace = true
 homepage.workspace = true
-description = "Governed diagnostics protocol for Rust applications and services"
+description = "Versioned failure contracts for Rust services"
 documentation = "https://docs.rs/recourse"
 readme = "README.md"
-keywords = ["diagnostics", "problem-details", "errors", "api", "observability"]
+keywords = ["rfc9457", "problem-details", "api-contracts", "json-schema", "errors"]
 categories = ["development-tools::debugging", "web-programming"]
 exclude = [
   "tests/architecture.rs",

@@ -1,7 +1,7 @@
 # recourse-axum
 
-`recourse-axum` is the Axum/Tower adapter for the framework-neutral `recourse`
-protocol.
+`recourse-axum` is the Axum/Tower adapter for Recourse's framework-neutral,
+versioned failure contracts.
 
 ```toml
 [dependencies]
