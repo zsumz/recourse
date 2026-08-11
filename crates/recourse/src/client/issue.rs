@@ -6,13 +6,6 @@ use http::StatusCode;
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ProtocolIssue {
-    /// A known member was present with a JSON type outside its wire contract.
-    InvalidMemberType {
-        /// Canonical JSON member name.
-        member: &'static str,
-        /// Human-readable expected JSON shape.
-        expected: &'static str,
-    },
     /// A string-valued code was not canonical Recourse identity text.
     MalformedCode,
     /// String-valued durable diagnostic ID violated its syntax contract.
@@ -53,4 +46,11 @@ pub enum ProtocolIssue {
     },
     /// Known diagnostic code is not registered for the HTTP surface.
     CodeNotRegisteredForHttp,
+    /// A known member was present with a JSON type outside its wire contract.
+    InvalidMemberType {
+        /// Canonical JSON member name.
+        member: &'static str,
+        /// Human-readable expected JSON shape.
+        expected: &'static str,
+    },
 }
