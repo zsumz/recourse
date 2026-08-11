@@ -14,7 +14,7 @@ keywords = ["axum", "diagnostics", "problem-details", "errors", "middleware"]
 categories = ["web-programming", "web-programming::http-server"]
 
 [dependencies]
-axum.workspace = true
+axum = { workspace = true, features = ["matched-path"] }
 futures-util.workspace = true
 http.workspace = true
 recourse.workspace = true

@@ -21,6 +21,8 @@ pub use request_id::{RequestIdGenerator, UlidRequestIds};
 #[cfg(test)]
 mod builder_test;
 #[cfg(test)]
+mod failure_test;
+#[cfg(test)]
 mod fallback_test;
 #[cfg(test)]
 mod fault_test;

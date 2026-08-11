@@ -7,7 +7,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
-axum.workspace = true
+axum = { workspace = true, features = ["http1", "json", "matched-path", "tokio"] }
 dispatch-diagnostics.workspace = true
 dispatch-model.workspace = true
 dispatch-service.workspace = true

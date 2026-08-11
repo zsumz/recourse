@@ -23,7 +23,7 @@ repository = "https://github.com/zsumz/recourse"
 homepage = "https://github.com/zsumz/recourse"
 
 [workspace.dependencies]
-axum = "0.8"
+axum = { version = "0.8", default-features = false }
 dispatch-diagnostics = { path = "reference/dispatch-diagnostics" }
 dispatch-model = { path = "reference/dispatch-model" }
 dispatch-service = { path = "reference/dispatch-service" }
@@ -40,7 +40,7 @@ syn = { version = "2.0", features = ["full", "visit"] }
 tokio = { version = "1.47", features = ["macros", "net", "rt-multi-thread"] }
 time = { version = "0.3.55", features = ["formatting", "parsing"] }
 toml = "0.8"
-tower = { version = "0.5", features = ["util"] }
+tower = { version = "0.5", default-features = false, features = ["util"] }
 ulid = "1.2"
 
 [workspace.lints.rust]

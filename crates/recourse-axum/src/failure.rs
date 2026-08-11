@@ -142,6 +142,22 @@ impl HttpFailure {
         }
     }
 
+    /// Delivers the pending observation and returns the encoded Problem.
+    ///
+    /// This consuming boundary supports transports such as server-sent events
+    /// after the HTTP response has already started. `None` identifies the
+    /// last-resort empty 500 used only when internal Problem encoding failed.
+    pub fn into_encoded_problem(self) -> Option<EncodedProblem> {
+        let mut inner = *self.inner;
+        if let Some(observation) = inner.observation.take() {
+            inner.hooks.emit(observation);
+        }
+        match inner.response {
+            PreparedResponse::Problem(problem) => Some(problem),
+            PreparedResponse::EmptyInternal => None,
+        }
+    }
+
     fn status(&self) -> StatusCode {
         match &self.inner.response {
             PreparedResponse::Problem(problem) => problem.status(),
@@ -161,13 +177,9 @@ impl fmt::Debug for HttpFailure {
 
 impl IntoResponse for HttpFailure {
     fn into_response(self) -> Response {
-        let mut inner = *self.inner;
-        if let Some(observation) = inner.observation.take() {
-            inner.hooks.emit(observation);
-        }
-        match inner.response {
-            PreparedResponse::Problem(problem) => encoded_response(problem),
-            PreparedResponse::EmptyInternal => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        match self.into_encoded_problem() {
+            Some(problem) => encoded_response(problem),
+            None => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
         }
     }
 }
