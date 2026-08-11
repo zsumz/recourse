@@ -5,7 +5,7 @@ use crate::{
     http::{Fixed, HttpProblemType},
 };
 
-use super::{Catalog, CatalogArtifact, CatalogSpec, CodeNumber, ProblemSet};
+use super::{Catalog, CatalogArtifact, CatalogLock, CatalogSpec, CodeNumber, ProblemSet};
 
 enum DispatchCatalog {}
 
@@ -62,6 +62,46 @@ fn generated_artifact_round_trips_through_bounded_parser() {
     assert!(artifact.write_pretty(&mut body).is_ok());
 
     assert_eq!(CatalogArtifact::from_slice(&body).ok(), Some(artifact));
+}
+
+#[test]
+fn parser_rejects_duplicate_members_before_deserialization() {
+    let mut body = Vec::new();
+    artifact()
+        .write_pretty(&mut body)
+        .unwrap_or_else(|error| panic!("fixture artifact must encode: {error}"));
+    let encoded = String::from_utf8(body)
+        .unwrap_or_else(|error| panic!("JSON fixture must be UTF-8: {error}"));
+    let duplicated = encoded.replacen(
+        "  \"schema_version\": 1,",
+        "  \"schema_version\": 1,\n  \"schema_version\": 1,",
+        1,
+    );
+
+    let error = CatalogArtifact::from_slice(duplicated.as_bytes())
+        .err()
+        .unwrap_or_else(|| panic!("duplicate member must be rejected"));
+    assert!(error.to_string().contains("duplicate JSON member"));
+}
+
+#[test]
+fn lock_parser_rejects_duplicate_members_before_deserialization() {
+    let mut body = Vec::new();
+    CatalogLock::from_artifact(&artifact())
+        .write_pretty(&mut body)
+        .unwrap_or_else(|error| panic!("fixture lock must encode: {error}"));
+    let encoded = String::from_utf8(body)
+        .unwrap_or_else(|error| panic!("JSON fixture must be UTF-8: {error}"));
+    let duplicated = encoded.replacen(
+        "  \"schema_version\": 1,",
+        "  \"schema_version\": 1,\n  \"schema_version\": 1,",
+        1,
+    );
+
+    let error = CatalogLock::from_slice(duplicated.as_bytes())
+        .err()
+        .unwrap_or_else(|| panic!("duplicate member must be rejected"));
+    assert!(error.to_string().contains("duplicate JSON member"));
 }
 
 #[test]

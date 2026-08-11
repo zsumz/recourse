@@ -3,7 +3,7 @@
 use http::{HeaderMap, StatusCode};
 use serde_json::{Map, Value};
 
-use crate::catalog::{Catalog, CatalogDiagnostic, CatalogSpec, Code};
+use crate::catalog::Code;
 
 use super::{DecodeError, DecodeLimits, ProtocolIssue, decode_object, member};
 
@@ -36,7 +36,7 @@ impl ReceivedProblem {
     /// ```
     /// use recourse::{
     ///     catalog::{Catalog, CatalogSpec, CodeNumber},
-    ///     client::{Classification, DecodeLimits, ReceivedProblem},
+    ///     client::{DecodeLimits, ProblemClassification, ReceivedProblem},
     ///     diagnostic::{DiagnosticType, NoEvidence},
     ///     http::{Fixed, HttpProblemType},
     ///     dependencies::http::{HeaderMap, StatusCode},
@@ -72,7 +72,7 @@ impl ReceivedProblem {
     ///     DecodeLimits::default(),
     /// )?;
     ///
-    /// assert!(matches!(catalog.classify(&received), Classification::Unknown));
+    /// assert!(matches!(catalog.classify(&received), ProblemClassification::Unknown));
     /// assert_eq!(received.transport_status(), StatusCode::BAD_GATEWAY);
     /// assert!(received.raw().contains_key("vendor"));
     /// # Ok(())
@@ -169,26 +169,6 @@ impl ReceivedProblem {
     /// Nonfatal inconsistencies discovered during tolerant parsing.
     pub fn protocol_issues(&self) -> &[ProtocolIssue] {
         &self.issues
-    }
-}
-
-/// Classification against one explicitly built local catalog.
-#[derive(Debug, Clone, Copy)]
-pub enum Classification<'a> {
-    /// Received code is present in the local catalog.
-    Known(&'a CatalogDiagnostic),
-    /// Code is absent, malformed, or newer than the local catalog.
-    Unknown,
-}
-
-impl<C: CatalogSpec> Catalog<C> {
-    /// Classifies by permanent code without rejecting newer definitions.
-    pub fn classify<'a>(&'a self, problem: &ReceivedProblem) -> Classification<'a> {
-        let Some(code) = problem.code() else {
-            return Classification::Unknown;
-        };
-        self.diagnostic(code)
-            .map_or(Classification::Unknown, Classification::Known)
     }
 }
 

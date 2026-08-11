@@ -9,9 +9,11 @@ use std::{
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
+use http::StatusCode;
+
 use crate::{
     catalog::{CatalogSpec, Code, CodeParseError},
-    http::HttpProblemType,
+    http::{HttpPolicy, HttpProblemType, mandatory_headers},
 };
 
 use super::ReceivedProblem;
@@ -39,6 +41,11 @@ impl<'a, D: HttpProblemType> ReceivedTypedProblem<'a, D> {
     /// Borrows the complete tolerant parent representation.
     pub const fn received(&self) -> &'a ReceivedProblem {
         self.received
+    }
+
+    /// Whether tolerant body parsing found no remaining protocol issue.
+    pub fn is_conformant(&self) -> bool {
+        self.received.protocol_issues().is_empty()
     }
 }
 
@@ -116,16 +123,34 @@ impl ReceivedProblem {
         }
         let expected_type = format!("{}{expected_code}", D::Catalog::TYPE_BASE);
         match self.type_uri() {
-            Some(received) if received == expected_type => Ok(Some(ReceivedTypedProblem {
-                received: self,
-                marker: PhantomData,
-            })),
+            Some(received) if received == expected_type => {}
             Some(received) => Err(TypedProblemError::TypeMismatch {
                 expected: expected_type,
                 received: received.to_owned(),
-            }),
-            None => Err(TypedProblemError::MissingType),
+            })?,
+            None => return Err(TypedProblemError::MissingType),
         }
+        let expected_status = StatusCode::from_u16(D::Policy::STATUS)
+            .map_err(|_| TypedProblemError::InvalidStatusDeclaration(D::Policy::STATUS))?;
+        if self.transport_status() != expected_status {
+            return Err(TypedProblemError::StatusMismatch {
+                expected: expected_status,
+                received: self.transport_status(),
+            });
+        }
+        for header in mandatory_headers(D::Policy::STATUS)
+            .iter()
+            .copied()
+            .chain(D::Policy::REQUIRED_HEADERS.iter().copied())
+        {
+            if !self.headers().contains_key(header) {
+                return Err(TypedProblemError::MissingRequiredHeader { header });
+            }
+        }
+        Ok(Some(ReceivedTypedProblem {
+            received: self,
+            marker: PhantomData,
+        }))
     }
 }
 
@@ -134,6 +159,8 @@ impl ReceivedProblem {
 pub enum TypedProblemError {
     /// Diagnostic's catalog declaration cannot produce a canonical code.
     InvalidDeclaration(CodeParseError),
+    /// Diagnostic declaration contains an invalid HTTP status.
+    InvalidStatusDeclaration(u16),
     /// Matching code omitted its required type identity.
     MissingType,
     /// Matching code was paired with another type URI.
@@ -142,6 +169,18 @@ pub enum TypedProblemError {
         expected: String,
         /// String-valued received type member.
         received: String,
+    },
+    /// Matching diagnostic arrived under the wrong transport status.
+    StatusMismatch {
+        /// Status fixed by the declaration.
+        expected: StatusCode,
+        /// Actual transport status.
+        received: StatusCode,
+    },
+    /// Matching diagnostic omitted a declaration-required header.
+    MissingRequiredHeader {
+        /// Missing canonical header name.
+        header: &'static str,
     },
     /// Matching Problem did not supply object-valued evidence.
     MissingEvidence,
@@ -155,11 +194,24 @@ impl Display for TypedProblemError {
             Self::InvalidDeclaration(error) => {
                 write!(formatter, "invalid local declaration: {error}")
             }
+            Self::InvalidStatusDeclaration(status) => {
+                write!(formatter, "invalid local HTTP status declaration {status}")
+            }
             Self::MissingType => formatter.write_str("matching diagnostic code omitted its type"),
             Self::TypeMismatch { expected, received } => write!(
                 formatter,
                 "diagnostic type mismatch: expected {expected}, received {received}"
             ),
+            Self::StatusMismatch { expected, received } => write!(
+                formatter,
+                "diagnostic status mismatch: expected {expected}, received {received}"
+            ),
+            Self::MissingRequiredHeader { header } => {
+                write!(
+                    formatter,
+                    "diagnostic response omitted required header {header}"
+                )
+            }
             Self::MissingEvidence => {
                 formatter.write_str("matching diagnostic omitted object evidence")
             }
@@ -173,7 +225,12 @@ impl Error for TypedProblemError {
         match self {
             Self::InvalidDeclaration(error) => Some(error),
             Self::Evidence(error) => Some(error),
-            Self::MissingType | Self::TypeMismatch { .. } | Self::MissingEvidence => None,
+            Self::InvalidStatusDeclaration(_)
+            | Self::MissingType
+            | Self::TypeMismatch { .. }
+            | Self::StatusMismatch { .. }
+            | Self::MissingRequiredHeader { .. }
+            | Self::MissingEvidence => None,
         }
     }
 }

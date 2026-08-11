@@ -1,5 +1,6 @@
 //! Bounded tolerant decoding of diagnostics received from remote systems.
 
+mod classification;
 mod decode;
 mod issue;
 mod member;
@@ -9,15 +10,18 @@ mod received_operation;
 mod terminal;
 mod typed;
 
+pub use classification::{Classification, KnownProblemClassification, ProblemClassification};
 pub(crate) use decode::decode_object;
 pub use decode::{DecodeError, DecodeLimit, DecodeLimits};
 pub use issue::ProtocolIssue;
-pub use received::{Classification, ReceivedProblem};
+pub use received::ReceivedProblem;
 pub use received_health::ReceivedHealthFinding;
 pub use received_operation::ReceivedOperationDiagnostic;
 pub use terminal::escape_terminal;
 pub use typed::{ReceivedTypedProblem, TypedProblemError};
 
+#[cfg(test)]
+mod conformance_test;
 #[cfg(test)]
 mod received_envelope_test;
 #[cfg(test)]

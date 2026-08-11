@@ -10,7 +10,9 @@ use crate::{
     http::{Fixed, HttpProblemType},
 };
 
-use super::{Classification, DecodeLimits, ProtocolIssue, ReceivedProblem, TypedProblemError};
+use super::{
+    DecodeLimits, ProblemClassification, ProtocolIssue, ReceivedProblem, TypedProblemError,
+};
 
 #[derive(Debug)]
 enum TestCatalog {}
@@ -81,7 +83,7 @@ fn old_catalog_classifies_new_code_without_rejecting_it() {
 
     assert!(matches!(
         catalog.classify(&unknown),
-        Classification::Unknown
+        ProblemClassification::Unknown
     ));
     assert_eq!(unknown.raw()["future"], 7);
 }
@@ -139,4 +141,18 @@ fn malformed_standard_identity_is_a_nonfatal_issue() {
             ProtocolIssue::InvalidBodyStatus
         ]
     );
+}
+
+#[test]
+fn remote_problem_rejects_duplicate_members_before_classification() {
+    let error = ReceivedProblem::from_slice(
+        StatusCode::NOT_FOUND,
+        &HeaderMap::new(),
+        br#"{"code":"RCV-1","evidence":{"id":1,"id":2}}"#,
+        DecodeLimits::default(),
+    )
+    .err()
+    .unwrap_or_else(|| panic!("duplicate member must be rejected"));
+
+    assert!(matches!(error, super::DecodeError::MalformedJson(_)));
 }

@@ -2,6 +2,7 @@
 
 mod error;
 mod parser;
+mod unique;
 mod validation;
 
 pub use crate::wire::WireLimits as DecodeLimits;

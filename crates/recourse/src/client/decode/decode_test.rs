@@ -35,6 +35,21 @@ fn body_root_and_syntax_fail_without_panicking() {
 }
 
 #[test]
+fn duplicate_members_are_rejected_at_every_depth() {
+    for body in [
+        br#"{"code":"CLI-1","code":"CLI-2"}"#.as_slice(),
+        br#"{"evidence":{"id":1,"id":2}}"#.as_slice(),
+        br#"{"evidence":[{"id":1,"id":2}]}"#.as_slice(),
+    ] {
+        let error = decode_object(body, DecodeLimits::default())
+            .err()
+            .unwrap_or_else(|| panic!("duplicate member must be rejected"));
+        assert!(matches!(error, DecodeError::MalformedJson(_)));
+        assert!(error.to_string().contains("duplicate JSON member"));
+    }
+}
+
+#[test]
 fn every_tree_shape_budget_is_enforced() {
     assert_limit(
         &json!({"a": {"b": {}}}),

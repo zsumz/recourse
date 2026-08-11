@@ -24,4 +24,25 @@ pub enum ProtocolIssue {
         /// Valid but inconsistent body status.
         body: StatusCode,
     },
+    /// Known code was paired with a different or missing type identity.
+    UnexpectedTypeForCode {
+        /// Type URI fixed by the local declaration.
+        expected: String,
+        /// String-valued received type, if present.
+        received: Option<String>,
+    },
+    /// Authoritative transport status disagreed with the local declaration.
+    CatalogStatusMismatch {
+        /// Status fixed by the local declaration.
+        expected: StatusCode,
+        /// Actual HTTP response status.
+        transport: StatusCode,
+    },
+    /// A response omitted a header required by its local declaration.
+    MissingRequiredHeader {
+        /// Canonical lowercase header name.
+        header: String,
+    },
+    /// Known diagnostic code is not registered for the HTTP surface.
+    CodeNotRegisteredForHttp,
 }
