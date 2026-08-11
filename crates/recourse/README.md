@@ -79,7 +79,6 @@ The catalog owns the status, headers, JSON shape, code, and type URI. Public
 evidence must explicitly implement `PublicEvidence`; private source errors use
 the structurally separate `PrivateReport` type.
 
-See the [repository](https://github.com/zsumz/recourse) for the protocol design,
-Dispatch reference implementation, conformance fixtures, and generated catalog
-documentation. The repository also records the reviewed performance and
-allocation boundary.
+See the [repository](https://github.com/zsumz/recourse) for the Dispatch
+reference implementation, executable conformance fixtures, and the canonical
+verification gate for the workspace and publishable package artifacts.

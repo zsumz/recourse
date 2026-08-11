@@ -6,7 +6,7 @@ Recourse is a governed diagnostics protocol for Rust applications and services.
 It keeps strict server construction separate from tolerant, bounded client
 decoding and keeps public Problems structurally separate from private reports.
 
-The workspace publishes three packages:
+The workspace contains three publishable packages:
 
 - `recourse`: framework-neutral protocol types, catalogs, compatibility, and
   encoding and decoding;
@@ -23,7 +23,8 @@ Run the complete local gate with:
 scripts/check
 ```
 
-The gate tests, lints, packages, extracts, installs, and runs the public crates,
-including a Ballast-shaped external consumer. It does not publish or push.
+The gate tests, lints, packages, extracts, installs, and runs the publishable
+crates, including a Ballast-shaped external consumer. It does not publish or
+push.
 
 Recourse is available under the [MIT License](LICENSE).

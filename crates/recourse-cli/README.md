@@ -26,5 +26,5 @@ The package name follows the `recourse-*` family. The executable intentionally
 keeps Cargo's subcommand convention: installing `recourse-cli` provides
 `cargo-recourse`, which users invoke as `cargo recourse`.
 
-See the [repository](https://github.com/zsumz/recourse) for the catalog formats,
-Dispatch fixtures, and compatibility model.
+See the [repository](https://github.com/zsumz/recourse) for executable catalog
+fixtures, compatibility tests, and the Dispatch reference packages.

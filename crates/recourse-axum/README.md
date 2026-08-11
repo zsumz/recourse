@@ -63,4 +63,4 @@ Recourse core produces the canonical status, headers, and JSON bytes.
 those bytes into an Axum response without redefining the protocol.
 
 See the [repository](https://github.com/zsumz/recourse) for the Dispatch Axum
-reference API and the complete lifecycle contract.
+reference API and executable lifecycle tests.
