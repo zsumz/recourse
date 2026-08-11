@@ -40,7 +40,7 @@ ship as one versioned cohort.
 - pointed the binary-only CLI documentation metadata at its README;
 - added a latest-stable Rust lane alongside the Rust 1.96 MSRV gate;
 - made source-compatibility CI execute its full patch lint set against the
-  finalized RC.2 public API snapshot.
+  finalized RC.2 public API snapshot, anchored by a signed durable tag.
 
 ### Fixed
 

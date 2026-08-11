@@ -102,7 +102,8 @@ fn latest_stable_lane_complements_the_msrv_gate() {
 #[test]
 fn source_semver_gate_checks_the_frozen_rc_api() {
     let workflow = read(&workspace_root().join(".github/workflows/ci.yml"));
-    let baseline = "ed742880b9edd7b692b5dfb585c07c5ceeb7fd43";
+    let baseline_tag = "api/v0.0.1-rc.2";
+    let baseline_commit = "ed742880b9edd7b692b5dfb585c07c5ceeb7fd43";
 
     for required in [
         "source-semver:",
@@ -110,14 +111,17 @@ fn source_semver_gate_checks_the_frozen_rc_api() {
         "cargo-semver-checks --version 0.49.0 --locked",
         "cargo semver-checks --package recourse\n",
         "cargo semver-checks --package recourse-axum\n",
-        baseline,
+        "git cat-file -t refs/tags/api/v0.0.1-rc.2",
+        "git rev-parse 'api/v0.0.1-rc.2^{commit}'",
+        baseline_commit,
     ] {
         assert!(
             workflow.contains(required),
             "source SemVer CI is missing {required:?}"
         );
     }
-    assert_eq!(workflow.matches(baseline).count(), 2);
+    assert_eq!(workflow.matches(baseline_tag).count(), 4);
+    assert_eq!(workflow.matches(baseline_commit).count(), 1);
     assert_eq!(workflow.matches("--release-type patch").count(), 2);
 }
 

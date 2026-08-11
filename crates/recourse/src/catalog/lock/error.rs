@@ -162,6 +162,16 @@ pub enum RetirementError {
     },
     /// Retirement rationale was empty or whitespace-only.
     EmptyReason,
+    /// Replacement was the retiring code, absent, or only reserved.
+    InvalidReplacement {
+        /// Rejected replacement code.
+        code: Code,
+    },
+    /// The retirement would introduce a replacement cycle.
+    ReplacementCycle {
+        /// Code participating in the rejected cycle.
+        code: Code,
+    },
     /// Retirement rationale exceeded the governed character limit.
     ReasonTooLong {
         /// Actual Unicode scalar-value count.
@@ -173,16 +183,6 @@ pub enum RetirementError {
     ReasonControlCharacter {
         /// Zero-based character index.
         character_index: usize,
-    },
-    /// Replacement was the retiring code, absent, or only reserved.
-    InvalidReplacement {
-        /// Rejected replacement code.
-        code: Code,
-    },
-    /// The retirement would introduce a replacement cycle.
-    ReplacementCycle {
-        /// Code participating in the rejected cycle.
-        code: Code,
     },
 }
 
