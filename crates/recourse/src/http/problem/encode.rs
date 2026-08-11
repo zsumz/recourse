@@ -5,6 +5,7 @@ use serde::Serialize;
 
 use crate::{
     catalog::Code,
+    materialize::{self, MaterializeError},
     wire::{BoundedJsonError, WireLimits, to_bounded_vec, validate_evidence, validate_wire_parts},
 };
 
@@ -13,11 +14,8 @@ use super::{EncodedProblem, PROBLEM_JSON, Problem, ProblemEncodeError, PublicEvi
 impl<E: PublicEvidence> Problem<E> {
     /// Encodes the strict canonical Problem profile.
     pub fn try_encode(&self) -> Result<EncodedProblem, ProblemEncodeError> {
-        let evidence = serde_json::to_value(&self.evidence)
-            .map_err(ProblemEncodeError::EvidenceSerialization)?;
-        if !evidence.is_object() {
-            return Err(ProblemEncodeError::EvidenceNotObject);
-        }
+        let limits = WireLimits::default();
+        let evidence = materialize::object(&self.evidence, limits).map_err(map_evidence_error)?;
         crate::catalog::validate_value(&self.evidence_validator, &evidence).map_err(
             |violation| ProblemEncodeError::EvidenceSchemaMismatch {
                 path: violation.path,
@@ -25,7 +23,6 @@ impl<E: PublicEvidence> Problem<E> {
             },
         )?;
         let instance = self.occurrence.instance().to_string();
-        let limits = WireLimits::default();
         validate_evidence(&evidence, limits).map_err(ProblemEncodeError::WireLimit)?;
         validate_wire_parts(
             8,
@@ -48,6 +45,14 @@ impl<E: PublicEvidence> Problem<E> {
         let mut headers = self.headers.clone();
         headers.insert(CONTENT_TYPE, PROBLEM_JSON);
         Ok(EncodedProblem::new(self.status, headers, body))
+    }
+}
+
+fn map_evidence_error(error: MaterializeError) -> ProblemEncodeError {
+    match error {
+        MaterializeError::Json(error) => ProblemEncodeError::EvidenceSerialization(error),
+        MaterializeError::NotObject => ProblemEncodeError::EvidenceNotObject,
+        MaterializeError::Limit(error) => ProblemEncodeError::WireLimit(error),
     }
 }
 

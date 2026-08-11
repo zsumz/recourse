@@ -5,6 +5,7 @@ use serde::Serialize;
 use crate::{
     catalog::Code,
     diagnostic::PublicEvidence,
+    materialize::{self, MaterializeError},
     wire::{BoundedJsonError, WireLimits, to_bounded_vec, validate_evidence, validate_wire_parts},
 };
 
@@ -30,18 +31,14 @@ impl<E: PublicEvidence> HealthFinding<E> {
     }
 
     fn try_wire(&self) -> Result<HealthWire<'_>, HealthEncodeError> {
-        let evidence = serde_json::to_value(&self.evidence)
-            .map_err(HealthEncodeError::EvidenceSerialization)?;
-        if !evidence.is_object() {
-            return Err(HealthEncodeError::EvidenceNotObject);
-        }
+        let limits = WireLimits::default();
+        let evidence = materialize::object(&self.evidence, limits).map_err(map_evidence_error)?;
         crate::catalog::validate_value(&self.evidence_validator, &evidence).map_err(
             |violation| HealthEncodeError::EvidenceSchemaMismatch {
                 path: violation.path,
                 reason: violation.reason,
             },
         )?;
-        let limits = WireLimits::default();
         validate_evidence(&evidence, limits).map_err(HealthEncodeError::WireLimit)?;
         validate_wire_parts(
             9,
@@ -67,6 +64,14 @@ impl<E: PublicEvidence> HealthFinding<E> {
             evidence,
             suggestions: &self.suggestions,
         })
+    }
+}
+
+fn map_evidence_error(error: MaterializeError) -> HealthEncodeError {
+    match error {
+        MaterializeError::Json(error) => HealthEncodeError::EvidenceSerialization(error),
+        MaterializeError::NotObject => HealthEncodeError::EvidenceNotObject,
+        MaterializeError::Limit(error) => HealthEncodeError::WireLimit(error),
     }
 }
 

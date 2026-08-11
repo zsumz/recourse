@@ -11,8 +11,8 @@ mod terminal;
 mod typed;
 
 pub use classification::{Classification, KnownProblemClassification, ProblemClassification};
-pub(crate) use decode::decode_object;
 pub use decode::{DecodeError, DecodeLimit, DecodeLimits};
+pub(crate) use decode::{decode_embedded_object, decode_object};
 pub use issue::ProtocolIssue;
 pub use received::ReceivedProblem;
 pub use received_health::ReceivedHealthFinding;

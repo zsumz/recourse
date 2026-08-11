@@ -59,6 +59,8 @@
 
 #![deny(missing_docs)]
 
+mod materialize;
+
 pub mod catalog;
 pub mod client;
 pub mod dependencies;
@@ -70,3 +72,6 @@ pub mod observe;
 pub mod operation;
 pub mod validation;
 pub mod wire;
+
+#[cfg(test)]
+mod materialize_test;

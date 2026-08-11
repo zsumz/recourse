@@ -5,6 +5,7 @@ use serde::Serialize;
 use crate::{
     catalog::Code,
     diagnostic::PublicEvidence,
+    materialize::{self, MaterializeError},
     wire::{
         BoundedJsonError, WireLimits, to_bounded_vec, validate_embedded, validate_evidence,
         validate_wire_parts,
@@ -34,29 +35,21 @@ impl<E: PublicEvidence, I: PublicEvidence> OperationDiagnostic<E, I> {
     }
 
     fn try_wire(&self) -> Result<OperationWire<'_>, OperationEncodeError> {
-        let evidence = serde_json::to_value(&self.evidence)
-            .map_err(OperationEncodeError::EvidenceSerialization)?;
-        if !evidence.is_object() {
-            return Err(OperationEncodeError::EvidenceNotObject);
-        }
+        let limits = WireLimits::default();
+        let evidence = materialize::object(&self.evidence, limits).map_err(map_evidence_error)?;
         crate::catalog::validate_value(&self.evidence_validator, &evidence).map_err(
             |violation| OperationEncodeError::EvidenceSchemaMismatch {
                 path: violation.path,
                 reason: violation.reason,
             },
         )?;
-        let impact = serde_json::to_value(&self.impact)
-            .map_err(OperationEncodeError::ImpactSerialization)?;
-        if !impact.is_object() {
-            return Err(OperationEncodeError::ImpactNotObject);
-        }
+        let impact = materialize::object(&self.impact, limits).map_err(map_impact_error)?;
         crate::catalog::validate_value(&self.impact_validator, &impact).map_err(|violation| {
             OperationEncodeError::ImpactSchemaMismatch {
                 path: violation.path,
                 reason: violation.reason,
             }
         })?;
-        let limits = WireLimits::default();
         validate_evidence(&evidence, limits).map_err(OperationEncodeError::WireLimit)?;
         validate_embedded(&impact, limits).map_err(OperationEncodeError::WireLimit)?;
         validate_wire_parts(
@@ -76,6 +69,22 @@ impl<E: PublicEvidence, I: PublicEvidence> OperationDiagnostic<E, I> {
             impact,
             suggestions: &self.suggestions,
         })
+    }
+}
+
+fn map_evidence_error(error: MaterializeError) -> OperationEncodeError {
+    match error {
+        MaterializeError::Json(error) => OperationEncodeError::EvidenceSerialization(error),
+        MaterializeError::NotObject => OperationEncodeError::EvidenceNotObject,
+        MaterializeError::Limit(error) => OperationEncodeError::WireLimit(error),
+    }
+}
+
+fn map_impact_error(error: MaterializeError) -> OperationEncodeError {
+    match error {
+        MaterializeError::Json(error) => OperationEncodeError::ImpactSerialization(error),
+        MaterializeError::NotObject => OperationEncodeError::ImpactNotObject,
+        MaterializeError::Limit(error) => OperationEncodeError::WireLimit(error),
     }
 }
 
