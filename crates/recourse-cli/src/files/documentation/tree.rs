@@ -1,12 +1,15 @@
 //! Symlink-safe copying, staging cleanup, and output-tree commit.
 
+mod transaction;
+
 use std::{
-    ffi::OsString,
     fs, io,
     path::{Path, PathBuf},
 };
 
 use crate::error::CommandError;
+
+use self::transaction::Transaction;
 
 #[cfg(test)]
 #[path = "tests/recovery.rs"]
@@ -27,7 +30,7 @@ impl StagingTree {
             .unwrap_or_else(|| Path::new("."));
         fs::create_dir_all(parent).map_err(|source| write_error(parent, source))?;
         reject_root_symlink(out)?;
-        recover_interrupted_commit(out)?;
+        Transaction::recover(out)?;
         for attempt in 0..128_u8 {
             let path = sibling(parent, "stage", attempt);
             match fs::create_dir(&path) {
@@ -66,10 +69,10 @@ impl StagingTree {
             let _ = fs::remove_dir_all(&self.path);
             return Ok(());
         }
-        let backup = backup_path(out)?;
-        fs::rename(out, &backup).map_err(|source| write_error(out, source))?;
+        let transaction = Transaction::begin(out)?;
+        transaction.back_up(out)?;
         if let Err(source) = fs::rename(&self.path, out) {
-            let rollback = fs::rename(&backup, out);
+            let rollback = transaction.roll_back(out);
             return Err(match rollback {
                 Ok(()) => write_error(out, source),
                 Err(rollback) => write_error(
@@ -80,8 +83,7 @@ impl StagingTree {
                 ),
             });
         }
-        let _ = fs::remove_dir_all(&backup);
-        Ok(())
+        transaction.finish(out)
     }
 }
 
@@ -131,40 +133,6 @@ fn reject_root_symlink(out: &Path) -> Result<(), CommandError> {
     }
 }
 
-fn recover_interrupted_commit(out: &Path) -> Result<(), CommandError> {
-    let backup = backup_path(out)?;
-    let backup_metadata = match fs::symlink_metadata(&backup) {
-        Ok(metadata) => metadata,
-        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(()),
-        Err(source) => return Err(read_error(&backup, source)),
-    };
-    if !backup_metadata.is_dir() || backup_metadata.file_type().is_symlink() {
-        return Err(unsafe_path(&backup, "recovery backup is not a directory"));
-    }
-    match fs::symlink_metadata(out) {
-        Err(error) if error.kind() == io::ErrorKind::NotFound => {
-            fs::rename(&backup, out).map_err(|source| write_error(out, source))
-        }
-        Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => {
-            fs::remove_dir_all(&backup).map_err(|source| write_error(&backup, source))
-        }
-        Ok(_) => Err(unsafe_path(
-            out,
-            "output conflicts with an interrupted documentation commit",
-        )),
-        Err(source) => Err(read_error(out, source)),
-    }
-}
-
-fn backup_path(out: &Path) -> Result<PathBuf, CommandError> {
-    let name = out
-        .file_name()
-        .ok_or_else(|| unsafe_path(out, "output must name a directory"))?;
-    let mut backup_name = OsString::from(".recourse-backup-");
-    backup_name.push(name);
-    Ok(out.with_file_name(backup_name))
-}
-
 fn sibling(parent: &Path, label: &str, attempt: u8) -> PathBuf {
     parent.join(format!(
         ".recourse-{label}-{}-{attempt}",
@@ -187,21 +155,21 @@ fn exchange_directories(_staged: &Path, _live: &Path) -> io::Result<()> {
     ))
 }
 
-fn unsafe_path(path: &Path, reason: &'static str) -> CommandError {
+pub(super) fn unsafe_path(path: &Path, reason: &'static str) -> CommandError {
     CommandError::UnsafeDocumentation {
         path: path.to_owned(),
         reason,
     }
 }
 
-fn read_error(path: &Path, source: io::Error) -> CommandError {
+pub(super) fn read_error(path: &Path, source: io::Error) -> CommandError {
     CommandError::Read {
         path: path.to_owned(),
         source,
     }
 }
 
-fn write_error(path: &Path, source: io::Error) -> CommandError {
+pub(super) fn write_error(path: &Path, source: io::Error) -> CommandError {
     CommandError::Write {
         path: path.to_owned(),
         source,

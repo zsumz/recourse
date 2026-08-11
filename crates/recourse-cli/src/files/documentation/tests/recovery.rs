@@ -6,7 +6,7 @@ use std::{
     sync::atomic::{AtomicU32, Ordering},
 };
 
-use super::StagingTree;
+use super::{StagingTree, transaction::Transaction};
 
 static NEXT_SANDBOX: AtomicU32 = AtomicU32::new(1);
 
@@ -34,11 +34,13 @@ impl Drop for Sandbox {
 fn stage_creation_recovers_an_interrupted_fallback_commit() {
     let sandbox = Sandbox::new();
     let out = sandbox.0.join("problems");
-    let backup = sandbox.0.join(".recourse-backup-problems");
     fs::create_dir(&out).unwrap_or_else(|error| panic!("create live tree: {error}"));
     fs::write(out.join("notes.md"), "preserve after recovery\n")
         .unwrap_or_else(|error| panic!("write recovery sentinel: {error}"));
-    fs::rename(&out, &backup)
+    let transaction = Transaction::begin(&out)
+        .unwrap_or_else(|error| panic!("begin interrupted transaction: {error}"));
+    transaction
+        .back_up(&out)
         .unwrap_or_else(|error| panic!("simulate interrupted commit: {error}"));
 
     let staging = StagingTree::new(&out)
@@ -58,5 +60,68 @@ fn stage_creation_recovers_an_interrupted_fallback_commit() {
         "preserve after recovery\n"
     );
     assert!(out.join("index.md").is_file());
-    assert!(!backup.exists());
+}
+
+#[test]
+fn unowned_legacy_backup_collision_is_never_deleted() {
+    let sandbox = Sandbox::new();
+    let out = sandbox.0.join("problems");
+    let backup = sandbox.0.join(".recourse-backup-problems");
+    fs::create_dir(&out).unwrap_or_else(|error| panic!("create live tree: {error}"));
+    fs::create_dir(&backup).unwrap_or_else(|error| panic!("create colliding tree: {error}"));
+    let live = b"live sentinel\n";
+    let unrelated = b"unrelated sentinel\n";
+    fs::write(out.join("sentinel"), live)
+        .unwrap_or_else(|error| panic!("write live sentinel: {error}"));
+    fs::write(backup.join("sentinel"), unrelated)
+        .unwrap_or_else(|error| panic!("write unrelated sentinel: {error}"));
+
+    assert!(StagingTree::new(&out).is_err());
+    assert_eq!(
+        fs::read(out.join("sentinel")).unwrap_or_else(|error| panic!("read live: {error}")),
+        live
+    );
+    assert_eq!(
+        fs::read(backup.join("sentinel")).unwrap_or_else(|error| panic!("read unrelated: {error}")),
+        unrelated
+    );
+}
+
+#[test]
+fn mismatched_ownership_marker_never_authorizes_deletion() {
+    let sandbox = Sandbox::new();
+    let out = sandbox.0.join("problems");
+    fs::create_dir(&out).unwrap_or_else(|error| panic!("create live tree: {error}"));
+    fs::write(out.join("old"), b"old sentinel\n")
+        .unwrap_or_else(|error| panic!("write old sentinel: {error}"));
+    let transaction = Transaction::begin(&out)
+        .unwrap_or_else(|error| panic!("begin interrupted transaction: {error}"));
+    transaction
+        .back_up(&out)
+        .unwrap_or_else(|error| panic!("back up live tree: {error}"));
+    let backup = fs::read_dir(&sandbox.0)
+        .unwrap_or_else(|error| panic!("list transaction artifacts: {error}"))
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .find(|path| {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.starts_with(".recourse-backup-"))
+        })
+        .unwrap_or_else(|| panic!("transaction backup must exist"));
+    fs::write(backup.join(".recourse-transaction-owner"), b"not owned")
+        .unwrap_or_else(|error| panic!("corrupt ownership marker: {error}"));
+    fs::create_dir(&out).unwrap_or_else(|error| panic!("create replacement tree: {error}"));
+    fs::write(out.join("new"), b"new sentinel\n")
+        .unwrap_or_else(|error| panic!("write new sentinel: {error}"));
+
+    assert!(StagingTree::new(&out).is_err());
+    assert_eq!(
+        fs::read(backup.join("old")).unwrap_or_else(|error| panic!("read old tree: {error}")),
+        b"old sentinel\n"
+    );
+    assert_eq!(
+        fs::read(out.join("new")).unwrap_or_else(|error| panic!("read new tree: {error}")),
+        b"new sentinel\n"
+    );
 }
