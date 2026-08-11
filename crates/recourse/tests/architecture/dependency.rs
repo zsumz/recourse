@@ -52,7 +52,7 @@ const RULES: &[DependencyRule] = &[
     DependencyRule {
         package: "recourse-cli",
         allowed_internal: &["recourse"],
-        allowed_external: &["atomic-write-file", "serde_json"],
+        allowed_external: &["atomic-write-file", "rustix", "serde_json"],
     },
     DependencyRule {
         package: "dispatch-model",

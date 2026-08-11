@@ -122,6 +122,29 @@ fn docs_generate_every_active_page_and_preserve_unowned_files() {
 }
 
 #[test]
+fn docs_recover_an_interrupted_fallback_commit() {
+    let (sandbox, current, lock) = accepted_fixture();
+    let out = sandbox.path("recoverable-problems");
+    let initial = docs(&current, &lock, &out);
+    assert!(initial.status.success(), "{}", stderr(&initial));
+    fs::write(out.join("notes.md"), "preserve after recovery\n")
+        .unwrap_or_else(|error| panic!("write recovery sentinel: {error}"));
+    let backup = sandbox.path(".recourse-backup-recoverable-problems");
+    fs::rename(&out, &backup)
+        .unwrap_or_else(|error| panic!("simulate interrupted commit: {error}"));
+
+    let recovered = docs(&current, &lock, &out);
+
+    assert!(recovered.status.success(), "{}", stderr(&recovered));
+    assert_eq!(
+        fs::read_to_string(out.join("notes.md"))
+            .unwrap_or_else(|error| panic!("read recovered sentinel: {error}")),
+        "preserve after recovery\n"
+    );
+    assert!(!backup.exists());
+}
+
+#[test]
 fn retired_history_gets_a_separate_page() {
     let (sandbox, current, lock) = accepted_fixture();
     let mut artifact: serde_json::Value = serde_json::from_slice(CATALOG)
