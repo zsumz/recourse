@@ -4,7 +4,28 @@ set -euo pipefail
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cache=${NPM_CONFIG_CACHE:-/tmp/recourse-smoque-npm-cache}
 package=${SMOQUE_PACKAGE:-smoque@0.1.2}
+expected_integrity=${SMOQUE_INTEGRITY:-sha512-tV8g4sT6HbGNEIknfPTJiD14kXzsTEgImPvX+1Y4QIY2bdUQ2eAZQBTO5EJqnl9fMxVzJ4oHFba7fEtAxyXNCw==}
 export NPM_CONFIG_CACHE=$cache
 
 cd "$repo_root"
-exec npx --yes "$package" run "$@"
+stage=$(mktemp -d "${TMPDIR:-/tmp}/recourse-smoque.XXXXXX")
+trap 'rm -rf "$stage"' EXIT
+metadata=$(npm pack --json --ignore-scripts --pack-destination "$stage" "$package")
+archive=$(node -e '
+  const path = require("node:path");
+  const [entry] = JSON.parse(process.argv[1]);
+  if (!entry || entry.filename !== path.basename(entry.filename)) process.exit(1);
+  process.stdout.write(entry.filename);
+' "$metadata")
+actual_integrity=$(node -e '
+  const [entry] = JSON.parse(process.argv[1]);
+  if (!entry || typeof entry.integrity !== "string") process.exit(1);
+  process.stdout.write(entry.integrity);
+' "$metadata")
+if [[ "$actual_integrity" != "$expected_integrity" ]]; then
+  echo "$package integrity mismatch" >&2
+  echo "expected: $expected_integrity" >&2
+  echo "actual:   $actual_integrity" >&2
+  exit 1
+fi
+npx --yes --package="$stage/$archive" smoque run "$@"

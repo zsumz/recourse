@@ -57,6 +57,7 @@ fn canonical_gate_proves_extracted_packages_through_smoque() {
     let canonical = read(&workspace.join("scripts/check"));
     let packages = read(&workspace.join("scripts/check-packages"));
     let archives = read(&workspace.join("scripts/check-package-archives"));
+    let launcher = read(&workspace.join("scripts/smoke-smoque"));
     let smoke = read(&workspace.join("smoke/package.smoke.mts"));
 
     assert!(canonical.contains("scripts/check-packages"));
@@ -75,6 +76,18 @@ fn canonical_gate_proves_extracted_packages_through_smoque() {
         assert!(
             archives.contains(required),
             "archive gate omits {required:?}"
+        );
+    }
+    for required in [
+        "smoque@0.1.2",
+        "sha512-tV8g4sT6HbGNEIknfPTJiD14kXzsTEgImPvX+1Y4QIY2bdUQ2eAZQBTO5EJqnl9fMxVzJ4oHFba7fEtAxyXNCw==",
+        "npm pack --json --ignore-scripts",
+        "actual_integrity",
+        "npx --yes --package=\"$stage/$archive\" smoque",
+    ] {
+        assert!(
+            launcher.contains(required),
+            "Smoque launcher omits {required:?}"
         );
     }
     for required in [
