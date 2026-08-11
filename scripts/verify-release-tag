@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+tag=${1:?usage: scripts/verify-release-tag <tag>}
+expected_identity='zsumz <shawn@zsumz.com>'
+release_version=$(awk -F '"' '/^version = / { print $2; exit }' release.toml)
+
+if [[ "$tag" != "v$release_version" ]]; then
+  echo "tag $tag does not match release version $release_version" >&2
+  exit 1
+fi
+if [[ $(git cat-file -t "refs/tags/$tag") != tag ]]; then
+  echo "$tag must be an annotated tag" >&2
+  exit 1
+fi
+tagger=$(git for-each-ref --format='%(taggername) <%(taggeremail)>' "refs/tags/$tag")
+if [[ "$tagger" != "$expected_identity" ]]; then
+  echo "$tag must be tagged by $expected_identity" >&2
+  exit 1
+fi
+
+git verify-tag "$tag"
+commit=$(git rev-list -n 1 "$tag")
+git verify-commit "$commit"
+if [[ $(git show -s --format='%an <%ae>' "$commit") != "$expected_identity" ]]; then
+  echo "$tag must point to a commit authored by $expected_identity" >&2
+  exit 1
+fi
+if [[ $(git rev-parse HEAD) != "$commit" ]]; then
+  echo "checked-out commit does not match $tag" >&2
+  exit 1
+fi
+git merge-base --is-ancestor "$commit" origin/main
+echo "verified signed release $tag at $commit"

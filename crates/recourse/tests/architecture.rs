@@ -10,6 +10,8 @@ mod dependency;
 mod file_size;
 #[path = "architecture/release.rs"]
 mod release;
+#[path = "architecture/release_automation.rs"]
+mod release_automation;
 #[path = "architecture/repository.rs"]
 mod repository;
 #[path = "architecture/source.rs"]

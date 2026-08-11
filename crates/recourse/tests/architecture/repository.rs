@@ -189,7 +189,7 @@ fn toolchain_and_workspace_rust_version_remain_aligned() {
     );
 }
 
-fn assert_external_actions_are_pinned(source: &str) {
+pub(super) fn assert_external_actions_are_pinned(source: &str) {
     for line in source.lines().map(str::trim) {
         let Some(action) = line.strip_prefix("- uses: ") else {
             continue;
