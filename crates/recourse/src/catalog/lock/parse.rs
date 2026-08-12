@@ -28,10 +28,26 @@ pub(super) fn parse_lock(body: &[u8]) -> Result<CatalogLock, LockParseError> {
     let mut value = Value::Object(object);
     value.sort_all_objects();
     let wire: CatalogLockWire = serde_json::from_value(value).map_err(LockParseError::Structure)?;
+    validate_wire_version(&wire)?;
     let mut lock = wire.into_domain();
     normalize_definitions(&mut lock)?;
     validate(&lock)?;
     Ok(lock)
+}
+
+fn validate_wire_version(wire: &CatalogLockWire) -> Result<(), LockParseError> {
+    match (wire.schema_version(), wire.has_problem_sets()) {
+        (1, false) | (2, true) => Ok(()),
+        (1, true) => invalid(
+            "problem_sets",
+            "schema version 1 does not define governed Problem sets",
+        ),
+        (2, false) => invalid(
+            "problem_sets",
+            "schema version 2 requires governed Problem sets",
+        ),
+        (found, _) => Err(LockParseError::UnsupportedSchemaVersion { found }),
+    }
 }
 
 fn normalize_definitions(lock: &mut CatalogLock) -> Result<(), LockParseError> {
@@ -57,7 +73,7 @@ fn normalize_definitions(lock: &mut CatalogLock) -> Result<(), LockParseError> {
 }
 
 fn validate(lock: &CatalogLock) -> Result<(), LockParseError> {
-    if lock.schema_version != 1 {
+    if lock.schema_version != super::CURRENT_SCHEMA_VERSION {
         return Err(LockParseError::UnsupportedSchemaVersion {
             found: lock.schema_version,
         });

@@ -94,8 +94,8 @@ fn lock_parser_rejects_duplicate_members_before_deserialization() {
     let encoded = String::from_utf8(body)
         .unwrap_or_else(|error| panic!("JSON fixture must be UTF-8: {error}"));
     let duplicated = encoded.replacen(
-        "  \"schema_version\": 1,",
-        "  \"schema_version\": 1,\n  \"schema_version\": 1,",
+        "  \"schema_version\": 2,",
+        "  \"schema_version\": 2,\n  \"schema_version\": 2,",
         1,
     );
 

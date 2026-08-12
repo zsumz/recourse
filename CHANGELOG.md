@@ -27,7 +27,11 @@ ship as one versioned cohort.
   and lock-entry types no longer implement unchecked Serde deserialization.
 - Use fixed-width 8-, 16-, 32-, or 64-bit integer evidence. Platform-sized and
   128-bit numeric schemas are rejected; out-of-range integers and nonfinite
-  floats now fail explicitly during evidence serialization.
+  floats now fail explicitly during evidence serialization. Serde JSON raw
+  value and arbitrary-precision tokens are rejected at the same boundary.
+- Treat newly written catalog locks as schema version 2. Version 1 means a
+  diagnostics-only lock and migrates on read with empty Problem sets; version
+  2 requires the governed `problem_sets` member.
 
 ### Added
 

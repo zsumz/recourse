@@ -32,6 +32,7 @@ pub use retirement::MAX_RETIREMENT_REASON_CHARS;
 pub const MAX_CATALOG_LOCK_BYTES: usize = 16 * 1024 * 1024;
 /// Maximum historical entries accepted in one catalog lock.
 pub const MAX_CATALOG_LOCK_ENTRIES: usize = 32_768;
+const CURRENT_SCHEMA_VERSION: u32 = 2;
 
 /// Versioned append-only compatibility history for one catalog namespace.
 ///
@@ -53,7 +54,7 @@ impl CatalogLock {
     /// Creates an initial lock accepting every current diagnostic definition.
     pub fn from_artifact(artifact: &CatalogArtifact) -> Self {
         Self {
-            schema_version: 1,
+            schema_version: CURRENT_SCHEMA_VERSION,
             catalog: LockIdentity::from_artifact(artifact),
             entries: artifact
                 .diagnostics()
@@ -71,6 +72,9 @@ impl CatalogLock {
     }
 
     /// Lock format version.
+    ///
+    /// Version 1 locks contained diagnostics only and migrate to version 2 on
+    /// read. Version 2 also governs API-operation Problem sets.
     pub const fn schema_version(&self) -> u32 {
         self.schema_version
     }
