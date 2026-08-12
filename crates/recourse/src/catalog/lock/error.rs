@@ -92,6 +92,13 @@ impl Error for LockWriteError {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ReservationError {
+    /// The lock namespace cannot represent every positive `u32` identity.
+    TypeNamespaceTooLong {
+        /// Maximum accepted type URI byte length.
+        maximum: usize,
+        /// Length required by the namespace's largest identity.
+        actual: usize,
+    },
     /// Explicit number already appears anywhere in lock history.
     AlreadyUsed {
         /// Rejected permanent number.
@@ -106,6 +113,10 @@ pub enum ReservationError {
 impl Display for ReservationError {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
         match self {
+            Self::TypeNamespaceTooLong { maximum, actual } => write!(
+                formatter,
+                "catalog type namespace requires {actual} bytes; maximum is {maximum}"
+            ),
             Self::AlreadyUsed { number } => write!(formatter, "diagnostic number {number} is used"),
             Self::NumberSpaceExhausted => formatter.write_str("diagnostic number space exhausted"),
             Self::InvalidLockPrefix => formatter.write_str("catalog lock prefix is invalid"),

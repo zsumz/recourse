@@ -2,7 +2,10 @@
 
 use std::io::Write;
 
-use crate::catalog::{Code, CodeNumber};
+use crate::{
+    catalog::{Code, CodeNumber, maximum_type_uri_bytes, type_namespace_fits_wire},
+    wire::WireLimits,
+};
 
 use super::{CatalogLock, LockEntry, LockWriteError, ReservationError};
 
@@ -19,6 +22,12 @@ pub(super) fn reserve(
     lock: &mut CatalogLock,
     reservation: Reservation,
 ) -> Result<&LockEntry, ReservationError> {
+    if !type_namespace_fits_wire(lock.type_base(), lock.prefix()) {
+        return Err(ReservationError::TypeNamespaceTooLong {
+            maximum: WireLimits::DEFAULT_MAX_STRING_BYTES,
+            actual: maximum_type_uri_bytes(lock.type_base(), lock.prefix()),
+        });
+    }
     let number = match reservation {
         Reservation::Next => next_number(lock)?,
         Reservation::Exact(number) => {

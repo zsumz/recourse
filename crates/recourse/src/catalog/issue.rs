@@ -23,6 +23,13 @@ pub enum CatalogIssue {
         /// Rejected declaration.
         value: String,
     },
+    /// The permanent namespace cannot represent every positive `u32` code.
+    TypeNamespaceTooLong {
+        /// Maximum accepted UTF-8 byte length.
+        maximum: usize,
+        /// Length of the type URI derived for `u32::MAX`.
+        actual: usize,
+    },
     /// A required metadata field is empty or otherwise invalid.
     InvalidMetadata {
         /// Diagnostic number with invalid metadata.

@@ -3,6 +3,7 @@
 use crate::{
     diagnostic::{DiagnosticType, NoEvidence},
     http::{Fixed, HttpProblemType},
+    wire::WireLimits,
 };
 
 use super::{Catalog, CatalogArtifact, CatalogLock, CatalogSpec, CodeNumber, ProblemSet};
@@ -126,6 +127,23 @@ fn parser_rejects_version_identity_and_schema_drift() {
     let mut schema = encoded_value();
     schema["diagnostics"][0]["evidence_schema"]["remote"] = serde_json::json!(true);
     assert!(parse_value(&schema).is_err());
+}
+
+#[test]
+fn parser_rejects_an_empty_artifact_with_an_exhausted_type_namespace() {
+    let mut value = encoded_value();
+    value["catalog"]["type_base"] = serde_json::json!(capacity_type_base("DSP"));
+    value["diagnostics"] = serde_json::json!([]);
+    value["problem_sets"] = serde_json::json!({});
+
+    let error = parse_value(&value).err();
+    assert!(error.is_some_and(|error| error.to_string().contains("largest code")));
+}
+
+fn capacity_type_base(prefix: &str) -> String {
+    let one_digit_code_bytes = prefix.len() + 2;
+    let base_bytes = WireLimits::DEFAULT_MAX_STRING_BYTES - one_digit_code_bytes;
+    format!("https://{}/", "a".repeat(base_bytes - 8))
 }
 
 #[test]

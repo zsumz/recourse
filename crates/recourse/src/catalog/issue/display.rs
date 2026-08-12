@@ -11,6 +11,10 @@ impl Display for CatalogIssue {
             Self::InvalidName { value } => write!(formatter, "invalid catalog name {value:?}"),
             Self::InvalidPrefix { value } => write!(formatter, "invalid catalog prefix {value:?}"),
             Self::InvalidTypeBase { value } => write!(formatter, "invalid type base {value:?}"),
+            Self::TypeNamespaceTooLong { maximum, actual } => write!(
+                formatter,
+                "catalog type namespace requires {actual} bytes for its largest code; maximum is {maximum}"
+            ),
             Self::InvalidMetadata {
                 number,
                 field,

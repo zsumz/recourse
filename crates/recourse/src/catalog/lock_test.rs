@@ -3,6 +3,7 @@
 use crate::{
     diagnostic::{DiagnosticType, NoEvidence},
     http::{Fixed, HttpProblemType},
+    wire::WireLimits,
 };
 
 use super::{
@@ -113,4 +114,33 @@ fn parser_rejects_identity_drift_inside_a_reservation() {
         .unwrap_or_else(|error| panic!("mutated lock must encode: {error}"));
 
     assert!(CatalogLock::from_slice(&body).is_err());
+}
+
+#[test]
+fn parser_and_reservation_reject_an_exhausted_type_namespace() {
+    let value = serde_json::json!({
+        "schema_version": 1,
+        "catalog": {
+            "name": "capacity",
+            "prefix": "DSP",
+            "type_base": capacity_type_base("DSP")
+        },
+        "entries": []
+    });
+    let body = serde_json::to_vec(&value)
+        .unwrap_or_else(|error| panic!("capacity fixture must encode: {error}"));
+    assert!(CatalogLock::from_slice(&body).is_err());
+
+    let mut unchecked: CatalogLock = serde_json::from_value(value)
+        .unwrap_or_else(|error| panic!("private defense fixture must deserialize: {error}"));
+    assert!(matches!(
+        unchecked.reserve(Reservation::Exact(CodeNumber::new(1))),
+        Err(ReservationError::TypeNamespaceTooLong { .. })
+    ));
+}
+
+fn capacity_type_base(prefix: &str) -> String {
+    let one_digit_code_bytes = prefix.len() + 2;
+    let base_bytes = WireLimits::DEFAULT_MAX_STRING_BYTES - one_digit_code_bytes;
+    format!("https://{}/", "a".repeat(base_bytes - 8))
 }

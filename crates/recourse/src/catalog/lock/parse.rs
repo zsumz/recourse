@@ -3,7 +3,9 @@
 use serde_json::{Value, json};
 
 use crate::{
-    catalog::{CatalogArtifact, Code},
+    catalog::{
+        CatalogArtifact, Code, maximum_type_uri_bytes, type_namespace_fits_wire, valid_type_base,
+    },
     client::{DecodeLimits, decode_object},
 };
 
@@ -32,6 +34,7 @@ fn validate(lock: &CatalogLock) -> Result<(), LockParseError> {
             found: lock.schema_version,
         });
     }
+    validate_namespace(lock)?;
     for pair in lock.entries.windows(2) {
         if pair[0].number() >= pair[1].number() {
             return invalid("entries", "numbers must be strictly increasing");
@@ -40,6 +43,22 @@ fn validate(lock: &CatalogLock) -> Result<(), LockParseError> {
     validate_definitions(lock)?;
     validate_entries(lock)?;
     validate_replacements(lock)
+}
+
+fn validate_namespace(lock: &CatalogLock) -> Result<(), LockParseError> {
+    if !valid_type_base(lock.type_base()) {
+        return invalid("catalog.type_base", "must be a valid permanent type base");
+    }
+    if !type_namespace_fits_wire(lock.type_base(), lock.prefix()) {
+        return invalid(
+            "catalog.type_base",
+            &format!(
+                "namespace requires {} bytes for its largest code",
+                maximum_type_uri_bytes(lock.type_base(), lock.prefix())
+            ),
+        );
+    }
+    Ok(())
 }
 
 fn validate_definitions(lock: &CatalogLock) -> Result<(), LockParseError> {

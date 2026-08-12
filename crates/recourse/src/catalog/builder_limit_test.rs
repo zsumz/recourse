@@ -121,15 +121,15 @@ fn object_schema(name: String, property: Value) -> Schema {
     schema.into()
 }
 
-const LONG_TYPE_BASE_LEN: usize = WireLimits::DEFAULT_MAX_STRING_BYTES + 1;
-const LONG_TYPE_BASE_BYTES: [u8; LONG_TYPE_BASE_LEN] = long_type_base();
-const LONG_TYPE_BASE: &str = match std::str::from_utf8(&LONG_TYPE_BASE_BYTES) {
+const CAPACITY_TYPE_BASE_LEN: usize = WireLimits::DEFAULT_MAX_STRING_BYTES - 5;
+const CAPACITY_TYPE_BASE_BYTES: [u8; CAPACITY_TYPE_BASE_LEN] = capacity_type_base();
+const CAPACITY_TYPE_BASE: &str = match std::str::from_utf8(&CAPACITY_TYPE_BASE_BYTES) {
     Ok(value) => value,
-    Err(_) => panic!("long type-base fixture must be UTF-8"),
+    Err(_) => panic!("capacity type-base fixture must be UTF-8"),
 };
 
-const fn long_type_base() -> [u8; LONG_TYPE_BASE_LEN] {
-    let mut value = [b'a'; LONG_TYPE_BASE_LEN];
+const fn capacity_type_base() -> [u8; CAPACITY_TYPE_BASE_LEN] {
+    let mut value = [b'a'; CAPACITY_TYPE_BASE_LEN];
     value[0] = b'h';
     value[1] = b't';
     value[2] = b't';
@@ -138,7 +138,7 @@ const fn long_type_base() -> [u8; LONG_TYPE_BASE_LEN] {
     value[5] = b':';
     value[6] = b'/';
     value[7] = b'/';
-    value[LONG_TYPE_BASE_LEN - 1] = b'/';
+    value[CAPACITY_TYPE_BASE_LEN - 1] = b'/';
     value
 }
 
@@ -147,7 +147,7 @@ enum LongTypeCatalog {}
 impl CatalogSpec for LongTypeCatalog {
     const NAME: &'static str = "long-type";
     const PREFIX: &'static str = "LNG";
-    const TYPE_BASE: &'static str = LONG_TYPE_BASE;
+    const TYPE_BASE: &'static str = CAPACITY_TYPE_BASE;
 }
 
 enum LongTypeProblem {}
@@ -168,7 +168,11 @@ impl HttpProblemType for LongTypeProblem {
 }
 
 #[test]
-fn builder_rejects_derived_type_uris_beyond_wire_limits() {
+fn builder_rejects_namespaces_that_cannot_represent_every_code() {
+    assert_eq!(
+        CAPACITY_TYPE_BASE.len() + "LNG-1".len(),
+        WireLimits::DEFAULT_MAX_STRING_BYTES
+    );
     let error = Catalog::<LongTypeCatalog>::builder()
         .problem::<LongTypeProblem>()
         .build()
@@ -177,10 +181,19 @@ fn builder_rejects_derived_type_uris_beyond_wire_limits() {
     assert!(
         error.is_some_and(|error| error.issues().iter().any(|issue| matches!(
             issue,
-            CatalogIssue::TypeUriTooLong { maximum, .. }
+            CatalogIssue::TypeNamespaceTooLong { maximum, actual }
                 if *maximum == WireLimits::DEFAULT_MAX_STRING_BYTES
+                    && *actual > *maximum
         )))
     );
+
+    let empty = Catalog::<LongTypeCatalog>::builder().build().err();
+    assert!(empty.is_some_and(|error| {
+        error
+            .issues()
+            .iter()
+            .any(|issue| matches!(issue, CatalogIssue::TypeNamespaceTooLong { .. }))
+    }));
 }
 
 #[test]

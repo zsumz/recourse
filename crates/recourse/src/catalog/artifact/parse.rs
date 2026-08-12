@@ -11,7 +11,10 @@ use crate::client::decode_object;
 use crate::wire::WireLimits;
 
 use super::{CatalogArtifact, CatalogDiagnostic, artifact_limits};
-use crate::catalog::{Code, CodeNumber, schema, valid_problem_set_id, valid_type_base};
+use crate::catalog::{
+    Code, CodeNumber, maximum_type_uri_bytes, schema, type_namespace_fits_wire,
+    valid_problem_set_id, valid_type_base,
+};
 
 pub use error::ArtifactParseError;
 
@@ -56,6 +59,16 @@ fn validate_identity(artifact: &CatalogArtifact) -> Result<(), ArtifactParseErro
         return invalid(
             "catalog.type_base",
             "must be an absolute query-free and fragment-free URI with a path ending in '/'",
+        );
+    }
+    if !type_namespace_fits_wire(&identity.type_base, &identity.prefix) {
+        return invalid(
+            "catalog.type_base",
+            &format!(
+                "namespace requires {} bytes for its largest code; default wire maximum is {}",
+                maximum_type_uri_bytes(&identity.type_base, &identity.prefix),
+                WireLimits::DEFAULT_MAX_STRING_BYTES
+            ),
         );
     }
     Ok(())

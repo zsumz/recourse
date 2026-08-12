@@ -7,8 +7,8 @@ use http::StatusCode;
 use super::registration::Registration;
 use crate::{
     catalog::{
-        CatalogIssue, CatalogSpec, Code, CodeNumber, artifact::CatalogIdentity, metadata,
-        valid_type_base,
+        CatalogIssue, CatalogSpec, Code, CodeNumber, artifact::CatalogIdentity,
+        maximum_type_uri_bytes, metadata, type_namespace_fits_wire, valid_type_base,
     },
     http::mandatory_headers,
 };
@@ -25,6 +25,8 @@ pub(super) fn validate_namespace<C: CatalogSpec>(
     let name_valid = valid_name(C::NAME);
     let prefix_valid = Code::new(C::PREFIX, CodeNumber::new(1)).is_ok();
     let base_valid = valid_type_base(C::TYPE_BASE);
+    let namespace_fits =
+        prefix_valid && base_valid && type_namespace_fits_wire(C::TYPE_BASE, C::PREFIX);
     if !name_valid {
         issues.push(CatalogIssue::InvalidName {
             value: C::NAME.into(),
@@ -40,7 +42,13 @@ pub(super) fn validate_namespace<C: CatalogSpec>(
             value: C::TYPE_BASE.into(),
         });
     }
-    (name_valid && prefix_valid && base_valid).then(|| ValidatedNamespace {
+    if prefix_valid && base_valid && !namespace_fits {
+        issues.push(CatalogIssue::TypeNamespaceTooLong {
+            maximum: crate::wire::WireLimits::DEFAULT_MAX_STRING_BYTES,
+            actual: maximum_type_uri_bytes(C::TYPE_BASE, C::PREFIX),
+        });
+    }
+    (name_valid && prefix_valid && base_valid && namespace_fits).then(|| ValidatedNamespace {
         identity: CatalogIdentity::new(C::NAME, C::PREFIX, C::TYPE_BASE),
         prefix: C::PREFIX,
         type_base: C::TYPE_BASE,
