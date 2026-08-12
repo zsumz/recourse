@@ -58,6 +58,13 @@ fn bound<'a>(schema: &'a Map<String, Value>, keyword: &str, exclusive: bool) -> 
 }
 
 fn compare_numbers(left: &Number, right: &Number) -> Option<Ordering> {
+    if left.is_f64() || right.is_f64() {
+        return if left.is_f64() && right.is_f64() {
+            left.as_f64()?.partial_cmp(&right.as_f64()?)
+        } else {
+            None
+        };
+    }
     if let (Some(left), Some(right)) = (left.as_i64(), right.as_i64()) {
         return Some(left.cmp(&right));
     }
@@ -78,7 +85,7 @@ fn compare_numbers(left: &Number, right: &Number) -> Option<Ordering> {
             u64::try_from(right).ok().map(|right| left.cmp(&right))
         };
     }
-    left.as_f64()?.partial_cmp(&right.as_f64()?)
+    None
 }
 
 fn validate_size_interval(

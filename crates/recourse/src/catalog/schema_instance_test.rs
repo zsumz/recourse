@@ -135,6 +135,13 @@ fn a_partially_valid_enum_remains_satisfiable() {
     }));
 
     assert!(schema::validate_artifact(&mut value).is_ok());
+
+    let mut mixed_precision = property(&serde_json::json!({
+        "type": "number",
+        "exclusiveMinimum": 9_007_199_254_740_992.0,
+        "maximum": 9_007_199_254_740_993_u64
+    }));
+    assert!(schema::validate_artifact(&mut mixed_precision).is_ok());
 }
 
 fn property(constraints: &serde_json::Value) -> serde_json::Value {
