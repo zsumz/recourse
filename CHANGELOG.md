@@ -22,6 +22,12 @@ ship as one versioned cohort.
 - Do not require `Catalog`, `Problem`, `HealthFinding`, or
   `OperationDiagnostic` to implement `UnwindSafe` or `RefUnwindSafe`; runtime
   validators intentionally make those auto-traits unavailable.
+- Decode catalog artifacts and locks with `CatalogArtifact::from_slice` and
+  `CatalogLock::from_slice`. The invariant-bearing artifact, diagnostic, lock,
+  and lock-entry types no longer implement unchecked Serde deserialization.
+- Use fixed-width 8-, 16-, 32-, or 64-bit integer evidence. Platform-sized and
+  128-bit numeric schemas are rejected; out-of-range integers and nonfinite
+  floats now fail explicitly during evidence serialization.
 
 ### Added
 

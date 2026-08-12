@@ -14,6 +14,7 @@ use super::{
     CatalogLock, LockEntry, LockParseError, MAX_CATALOG_LOCK_BYTES, MAX_CATALOG_LOCK_ENTRIES,
     replacement::{self, ReplacementIssue},
     retirement,
+    wire::CatalogLockWire,
 };
 
 pub(super) fn parse_lock(body: &[u8]) -> Result<CatalogLock, LockParseError> {
@@ -26,7 +27,8 @@ pub(super) fn parse_lock(body: &[u8]) -> Result<CatalogLock, LockParseError> {
     let object = decode_object(body, limits).map_err(LockParseError::Decode)?;
     let mut value = Value::Object(object);
     value.sort_all_objects();
-    let mut lock = serde_json::from_value(value).map_err(LockParseError::Structure)?;
+    let wire: CatalogLockWire = serde_json::from_value(value).map_err(LockParseError::Structure)?;
+    let mut lock = wire.into_domain();
     normalize_definitions(&mut lock)?;
     validate(&lock)?;
     Ok(lock)

@@ -10,7 +10,7 @@ use serde_json::Value;
 use crate::client::decode_object;
 use crate::wire::WireLimits;
 
-use super::{CatalogArtifact, CatalogDiagnostic, artifact_limits};
+use super::{CatalogArtifact, CatalogDiagnostic, artifact_limits, wire::CatalogArtifactWire};
 use crate::catalog::{
     Code, CodeNumber, maximum_type_uri_bytes, schema, type_namespace_fits_wire,
     valid_problem_set_id, valid_type_base,
@@ -20,8 +20,9 @@ pub use error::ArtifactParseError;
 
 pub(super) fn parse_artifact(body: &[u8]) -> Result<CatalogArtifact, ArtifactParseError> {
     let object = decode_object(body, artifact_limits()).map_err(ArtifactParseError::Decode)?;
-    let mut artifact =
+    let wire: CatalogArtifactWire =
         serde_json::from_value(Value::Object(object)).map_err(ArtifactParseError::Structure)?;
+    let mut artifact = wire.into_domain();
     validate(&mut artifact)?;
     Ok(artifact)
 }

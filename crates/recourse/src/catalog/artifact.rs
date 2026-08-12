@@ -4,14 +4,11 @@ pub(crate) mod limits;
 mod parse;
 mod parts;
 mod surface;
+mod wire;
 mod write;
+mod write_error;
 
-use std::{
-    collections::BTreeMap,
-    error::Error,
-    fmt::{self, Display, Formatter},
-    io::{self, Write},
-};
+use std::{collections::BTreeMap, io::Write};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -20,12 +17,20 @@ use super::{Code, CodeNumber};
 pub(crate) use limits::artifact_limits;
 pub(crate) use parts::DiagnosticArtifactParts;
 pub(crate) use surface::{DiagnosticSurfaces, HealthSurface, HttpSurface, OperationSurface};
+pub(crate) use wire::CatalogDiagnosticWire;
+pub use write_error::ArtifactWriteError;
 
 /// Maximum accepted encoded size of a catalog artifact.
 pub const MAX_CATALOG_ARTIFACT_BYTES: usize = 8 * 1024 * 1024;
 
 /// Deterministic generated representation of one validated catalog.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+///
+/// Untrusted artifacts must enter through [`CatalogArtifact::from_slice`].
+/// ```compile_fail
+/// use recourse::catalog::CatalogArtifact;
+/// let _: Result<CatalogArtifact, _> = serde_json::from_str("{}");
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct CatalogArtifact {
     schema_version: u32,
@@ -109,7 +114,13 @@ impl CatalogIdentity {
 }
 
 /// One validated semantic identity and its registered surfaces.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+///
+/// Diagnostics are created only as part of a validated catalog artifact.
+/// ```compile_fail
+/// use recourse::catalog::CatalogDiagnostic;
+/// let _: Result<CatalogDiagnostic, _> = serde_json::from_str("{}");
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct CatalogDiagnostic {
     number: CodeNumber,
@@ -198,42 +209,5 @@ impl CatalogDiagnostic {
     /// Whether this diagnostic is registered as a health finding.
     pub const fn supports_health(&self) -> bool {
         self.surfaces.supports_health()
-    }
-}
-
-/// Error writing a deterministic catalog artifact.
-#[derive(Debug)]
-#[non_exhaustive]
-pub enum ArtifactWriteError {
-    /// JSON serialization failed.
-    Serialize(serde_json::Error),
-    /// The destination rejected the complete bounded output.
-    Write(io::Error),
-    /// Canonical output exceeded the catalog artifact body limit.
-    TooLarge {
-        /// Maximum accepted artifact size in bytes.
-        maximum: usize,
-    },
-}
-
-impl Display for ArtifactWriteError {
-    fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Serialize(error) => write!(formatter, "serialize catalog artifact: {error}"),
-            Self::Write(error) => write!(formatter, "write catalog artifact: {error}"),
-            Self::TooLarge { maximum } => {
-                write!(formatter, "catalog artifact exceeds {maximum} bytes")
-            }
-        }
-    }
-}
-
-impl Error for ArtifactWriteError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            Self::Serialize(error) => Some(error),
-            Self::Write(error) => Some(error),
-            Self::TooLarge { .. } => None,
-        }
     }
 }

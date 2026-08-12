@@ -7,7 +7,7 @@ use crate::{
 };
 
 use super::{
-    Catalog, CatalogLock, CatalogSpec, CodeNumber, LockState, LockWriteError,
+    Catalog, CatalogLock, CatalogSpec, Code, CodeNumber, LockEntry, LockState, LockWriteError,
     MAX_CATALOG_LOCK_BYTES, MAX_CATALOG_LOCK_ENTRIES, Reservation, ReservationError,
 };
 
@@ -132,8 +132,8 @@ fn parser_and_reservation_reject_an_exhausted_type_namespace() {
         .unwrap_or_else(|error| panic!("capacity fixture must encode: {error}"));
     assert!(CatalogLock::from_slice(&body).is_err());
 
-    let mut unchecked: CatalogLock = serde_json::from_value(value)
-        .unwrap_or_else(|error| panic!("private defense fixture must deserialize: {error}"));
+    let mut unchecked = lock();
+    unchecked.set_type_base_unchecked(capacity_type_base("DSP"));
     assert!(matches!(
         unchecked.reserve(Reservation::Exact(CodeNumber::new(1))),
         Err(ReservationError::TypeNamespaceTooLong { .. })
@@ -142,17 +142,8 @@ fn parser_and_reservation_reject_an_exhausted_type_namespace() {
 
 #[test]
 fn bounded_writer_does_not_mutate_the_destination_on_overflow() {
-    let value = serde_json::json!({
-        "schema_version": 1,
-        "catalog": {
-            "name": "oversized",
-            "prefix": "BIG",
-            "type_base": "x".repeat(MAX_CATALOG_LOCK_BYTES + 1)
-        },
-        "entries": []
-    });
-    let unchecked: CatalogLock = serde_json::from_value(value)
-        .unwrap_or_else(|error| panic!("private writer fixture must deserialize: {error}"));
+    let mut unchecked = lock();
+    unchecked.set_type_base_unchecked("x".repeat(MAX_CATALOG_LOCK_BYTES + 1));
     let mut destination = b"sentinel".to_vec();
 
     let error = unchecked.write_pretty(&mut destination).err();
@@ -169,26 +160,15 @@ fn reservation_commits_only_a_parser_closed_candidate() {
     let entries = (1..=u32::try_from(MAX_CATALOG_LOCK_ENTRIES)
         .unwrap_or_else(|error| panic!("entry limit must fit u32: {error}")))
         .map(|number| {
-            let code = format!("DSP-{number}");
-            serde_json::json!({
-                "state": "reserved",
-                "number": number,
-                "code": code,
-                "type": format!("https://dispatch.invalid/problems/{code}")
-            })
+            let number = CodeNumber::new(number);
+            let code = Code::new("DSP", number)
+                .unwrap_or_else(|error| panic!("fixture code must build: {error}"));
+            let type_uri = format!("https://dispatch.invalid/problems/{code}");
+            LockEntry::reserved(number, code, type_uri)
         })
         .collect::<Vec<_>>();
-    let value = serde_json::json!({
-        "schema_version": 1,
-        "catalog": {
-            "name": "dispatch",
-            "prefix": "DSP",
-            "type_base": "https://dispatch.invalid/problems/"
-        },
-        "entries": entries
-    });
-    let mut unchecked: CatalogLock = serde_json::from_value(value)
-        .unwrap_or_else(|error| panic!("private mutation fixture must deserialize: {error}"));
+    let mut unchecked = lock();
+    unchecked.replace_entries_unchecked(entries);
     let before = unchecked.clone();
 
     let error = unchecked.reserve(Reservation::Next).err();

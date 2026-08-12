@@ -9,6 +9,9 @@ mod lifecycle;
 mod parse;
 mod replacement;
 mod retirement;
+#[cfg(test)]
+mod test_support;
+mod wire;
 mod write;
 
 use std::io::Write;
@@ -31,7 +34,13 @@ pub const MAX_CATALOG_LOCK_BYTES: usize = 16 * 1024 * 1024;
 pub const MAX_CATALOG_LOCK_ENTRIES: usize = 32_768;
 
 /// Versioned append-only compatibility history for one catalog namespace.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+///
+/// Untrusted lock bytes must enter through [`CatalogLock::from_slice`].
+/// ```compile_fail
+/// use recourse::catalog::CatalogLock;
+/// let _: Result<CatalogLock, _> = serde_json::from_str("{}");
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct CatalogLock {
     schema_version: u32,

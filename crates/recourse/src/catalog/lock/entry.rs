@@ -1,6 +1,6 @@
 //! One permanent diagnostic identity in the append-only lock history.
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::catalog::{CatalogDiagnostic, Code, CodeNumber};
 
@@ -16,7 +16,13 @@ pub enum LockState {
 }
 
 /// One reserved identity, accepted definition, or retired tombstone.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+///
+/// Lock entries are decoded only inside [`super::CatalogLock::from_slice`].
+/// ```compile_fail
+/// use recourse::catalog::LockEntry;
+/// let _: Result<LockEntry, _> = serde_json::from_str("{}");
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "state", rename_all = "snake_case", deny_unknown_fields)]
 pub enum LockEntry {
     /// Allocated identity awaiting an accepted definition.
