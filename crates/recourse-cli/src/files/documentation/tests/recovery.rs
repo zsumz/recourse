@@ -125,3 +125,80 @@ fn mismatched_ownership_marker_never_authorizes_deletion() {
         b"new sentinel\n"
     );
 }
+
+#[test]
+fn unrelated_replacement_never_authorizes_backup_deletion() {
+    let sandbox = Sandbox::new();
+    let out = sandbox.0.join("problems");
+    fs::create_dir(&out).unwrap_or_else(|error| panic!("create live tree: {error}"));
+    let old = b"old sentinel\n";
+    let unrelated = b"unrelated sentinel\n";
+    fs::write(out.join("sentinel"), old)
+        .unwrap_or_else(|error| panic!("write old sentinel: {error}"));
+    let transaction = Transaction::begin(&out)
+        .unwrap_or_else(|error| panic!("begin interrupted transaction: {error}"));
+    transaction
+        .back_up(&out)
+        .unwrap_or_else(|error| panic!("back up live tree: {error}"));
+    let backup = find_backup(&sandbox.0);
+    fs::create_dir(&out).unwrap_or_else(|error| panic!("create unrelated tree: {error}"));
+    fs::write(out.join("sentinel"), unrelated)
+        .unwrap_or_else(|error| panic!("write unrelated sentinel: {error}"));
+
+    assert!(StagingTree::new(&out).is_err());
+    assert_eq!(
+        fs::read(backup.join("sentinel"))
+            .unwrap_or_else(|error| panic!("read backed-up tree: {error}")),
+        old
+    );
+    assert_eq!(
+        fs::read(out.join("sentinel"))
+            .unwrap_or_else(|error| panic!("read unrelated tree: {error}")),
+        unrelated
+    );
+}
+
+#[test]
+fn matching_replacement_completes_interrupted_commit() {
+    let sandbox = Sandbox::new();
+    let out = sandbox.0.join("problems");
+    let staged = sandbox.0.join("staged");
+    fs::create_dir(&out).unwrap_or_else(|error| panic!("create live tree: {error}"));
+    fs::write(out.join("old"), b"old sentinel\n")
+        .unwrap_or_else(|error| panic!("write old sentinel: {error}"));
+    fs::create_dir(&staged).unwrap_or_else(|error| panic!("create staged tree: {error}"));
+    fs::write(staged.join("new"), b"new sentinel\n")
+        .unwrap_or_else(|error| panic!("write new sentinel: {error}"));
+    let transaction = Transaction::begin(&out)
+        .unwrap_or_else(|error| panic!("begin interrupted transaction: {error}"));
+    transaction
+        .mark_staged(&staged)
+        .unwrap_or_else(|error| panic!("mark staged tree: {error}"));
+    transaction
+        .back_up(&out)
+        .unwrap_or_else(|error| panic!("back up live tree: {error}"));
+    let backup = find_backup(&sandbox.0);
+    fs::rename(&staged, &out).unwrap_or_else(|error| panic!("install staged tree: {error}"));
+
+    let _staging =
+        StagingTree::new(&out).unwrap_or_else(|error| panic!("finish interrupted commit: {error}"));
+    assert!(!backup.exists());
+    assert_eq!(
+        fs::read(out.join("new")).unwrap_or_else(|error| panic!("read new tree: {error}")),
+        b"new sentinel\n"
+    );
+    assert!(!out.join(".recourse-transaction-owner").exists());
+}
+
+fn find_backup(parent: &std::path::Path) -> PathBuf {
+    fs::read_dir(parent)
+        .unwrap_or_else(|error| panic!("list transaction artifacts: {error}"))
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .find(|path| {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.starts_with(".recourse-backup-"))
+        })
+        .unwrap_or_else(|| panic!("transaction backup must exist"))
+}

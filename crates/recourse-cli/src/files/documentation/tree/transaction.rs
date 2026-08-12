@@ -78,6 +78,10 @@ impl Transaction {
         Ok(())
     }
 
+    pub(super) fn mark_staged(&self, staged: &Path) -> Result<(), CommandError> {
+        create_new(&staged.join(OWNERSHIP_MARKER), &self.body)
+    }
+
     pub(super) fn roll_back(&self, out: &Path) -> Result<(), io::Error> {
         fs::rename(&self.backup, out)?;
         fs::remove_file(out.join(OWNERSHIP_MARKER))?;
@@ -86,7 +90,13 @@ impl Transaction {
 
     pub(super) fn finish(self, out: &Path) -> Result<(), CommandError> {
         self.validate(out)?;
+        self.validate_marker(
+            out,
+            "installed documentation transaction marker does not match",
+        )?;
         fs::remove_dir_all(&self.backup).map_err(|source| write_error(&self.backup, source))?;
+        let marker = out.join(OWNERSHIP_MARKER);
+        fs::remove_file(&marker).map_err(|source| write_error(&marker, source))?;
         fs::remove_file(&self.journal).map_err(|source| write_error(&self.journal, source))
     }
 
@@ -154,15 +164,20 @@ impl Transaction {
                 "documentation transaction backup changed",
             ));
         }
-        let actual = fs::read(self.backup.join(OWNERSHIP_MARKER))
-            .map_err(|source| read_error(&self.backup, source))?;
-        if actual != self.body {
-            return Err(unsafe_path(
-                &self.backup,
-                "recovery backup ownership marker does not match",
-            ));
+        self.validate_marker(
+            &self.backup,
+            "recovery backup ownership marker does not match",
+        )
+    }
+
+    fn validate_marker(&self, directory: &Path, reason: &'static str) -> Result<(), CommandError> {
+        let marker = directory.join(OWNERSHIP_MARKER);
+        let actual = fs::read(&marker).map_err(|source| read_error(&marker, source))?;
+        if actual == self.body {
+            Ok(())
+        } else {
+            Err(unsafe_path(directory, reason))
         }
-        Ok(())
     }
 }
 

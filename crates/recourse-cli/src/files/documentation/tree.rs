@@ -70,6 +70,7 @@ impl StagingTree {
             return Ok(());
         }
         let transaction = Transaction::begin(out)?;
+        transaction.mark_staged(&self.path)?;
         transaction.back_up(out)?;
         if let Err(source) = fs::rename(&self.path, out) {
             let rollback = transaction.roll_back(out);
