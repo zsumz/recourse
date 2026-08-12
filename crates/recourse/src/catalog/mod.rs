@@ -24,8 +24,8 @@ pub use issue::CatalogIssue;
 pub use lock::{
     AcceptanceError, AcceptanceMode, CatalogLock, CompatibilityChange, CompatibilityReport,
     CompatibilitySeverity, LockEntry, LockParseError, LockState, LockWriteError,
-    MAX_CATALOG_LOCK_BYTES, MAX_RETIREMENT_REASON_CHARS, Reservation, ReservationError,
-    RetirementError,
+    MAX_CATALOG_LOCK_BYTES, MAX_CATALOG_LOCK_ENTRIES, MAX_RETIREMENT_REASON_CHARS, Reservation,
+    ReservationError, RetirementError,
 };
 pub use metadata::{
     MAX_DETAIL_CHARS, MAX_DOCUMENTATION_CHARS, MAX_SUGGESTION_CHARS, MAX_SUGGESTIONS,

@@ -4,13 +4,14 @@ use serde_json::{Value, json};
 
 use crate::{
     catalog::{
-        CatalogArtifact, Code, maximum_type_uri_bytes, type_namespace_fits_wire, valid_type_base,
+        CatalogArtifact, Code, maximum_type_uri_bytes, schema, type_namespace_fits_wire,
+        valid_type_base,
     },
     client::{DecodeLimits, decode_object},
 };
 
 use super::{
-    CatalogLock, LockEntry, LockParseError, MAX_CATALOG_LOCK_BYTES,
+    CatalogLock, LockEntry, LockParseError, MAX_CATALOG_LOCK_BYTES, MAX_CATALOG_LOCK_ENTRIES,
     replacement::{self, ReplacementIssue},
     retirement,
 };
@@ -20,12 +21,37 @@ pub(super) fn parse_lock(body: &[u8]) -> Result<CatalogLock, LockParseError> {
         .with_max_body_bytes(MAX_CATALOG_LOCK_BYTES)
         .with_max_nesting_depth(64)
         .with_max_object_properties(16_384)
-        .with_max_array_items(32_768)
+        .with_max_array_items(MAX_CATALOG_LOCK_ENTRIES)
         .with_max_string_bytes(512 * 1024);
     let object = decode_object(body, limits).map_err(LockParseError::Decode)?;
-    let lock = serde_json::from_value(Value::Object(object)).map_err(LockParseError::Structure)?;
+    let mut value = Value::Object(object);
+    value.sort_all_objects();
+    let mut lock = serde_json::from_value(value).map_err(LockParseError::Structure)?;
+    normalize_definitions(&mut lock)?;
     validate(&lock)?;
     Ok(lock)
+}
+
+fn normalize_definitions(lock: &mut CatalogLock) -> Result<(), LockParseError> {
+    for entry in &mut lock.entries {
+        let Some(diagnostic) = entry.diagnostic_mut() else {
+            continue;
+        };
+        let path = format!("entries.{}", diagnostic.code());
+        schema::validate_artifact(diagnostic.evidence_schema_mut()).map_err(|violation| {
+            LockParseError::Invalid {
+                path: format!("{path}.evidence_schema{}", violation.path),
+                reason: violation.reason,
+            }
+        })?;
+        if let Some(impact) = diagnostic.impact_schema_mut() {
+            schema::validate_artifact(impact).map_err(|violation| LockParseError::Invalid {
+                path: format!("{path}.surfaces.operation.impact_schema{}", violation.path),
+                reason: violation.reason,
+            })?;
+        }
+    }
+    Ok(())
 }
 
 fn validate(lock: &CatalogLock) -> Result<(), LockParseError> {

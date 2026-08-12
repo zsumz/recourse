@@ -1,6 +1,7 @@
 //! Append-only accepted, reserved, and retired diagnostic history.
 
 mod accept;
+mod closure;
 mod compatibility;
 mod entry;
 mod error;
@@ -8,6 +9,7 @@ mod lifecycle;
 mod parse;
 mod replacement;
 mod retirement;
+mod write;
 
 use std::io::Write;
 
@@ -25,6 +27,8 @@ pub use retirement::MAX_RETIREMENT_REASON_CHARS;
 
 /// Maximum accepted encoded size of a catalog lock.
 pub const MAX_CATALOG_LOCK_BYTES: usize = 16 * 1024 * 1024;
+/// Maximum historical entries accepted in one catalog lock.
+pub const MAX_CATALOG_LOCK_ENTRIES: usize = 32_768;
 
 /// Versioned append-only compatibility history for one catalog namespace.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -82,7 +86,7 @@ impl CatalogLock {
 
     /// Writes deterministic pretty JSON followed by one newline.
     pub fn write_pretty<W: Write>(&self, writer: W) -> Result<(), LockWriteError> {
-        lifecycle::write_pretty(self, writer)
+        write::write_pretty(self, writer)
     }
 
     /// Reserves a never-before-used diagnostic identity.

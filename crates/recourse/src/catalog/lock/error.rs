@@ -68,6 +68,11 @@ pub enum LockWriteError {
     Serialize(serde_json::Error),
     /// Destination rejected the encoded lock.
     Write(io::Error),
+    /// Canonical output exceeded the catalog-lock body limit.
+    TooLarge {
+        /// Maximum accepted lock size in bytes.
+        maximum: usize,
+    },
 }
 
 impl Display for LockWriteError {
@@ -75,6 +80,9 @@ impl Display for LockWriteError {
         match self {
             Self::Serialize(error) => write!(formatter, "serialize catalog lock: {error}"),
             Self::Write(error) => write!(formatter, "write catalog lock: {error}"),
+            Self::TooLarge { maximum } => {
+                write!(formatter, "catalog lock exceeds {maximum} bytes")
+            }
         }
     }
 }
@@ -84,6 +92,7 @@ impl Error for LockWriteError {
         match self {
             Self::Serialize(error) => Some(error),
             Self::Write(error) => Some(error),
+            Self::TooLarge { .. } => None,
         }
     }
 }
@@ -98,6 +107,11 @@ pub enum ReservationError {
         maximum: usize,
         /// Length required by the namespace's largest identity.
         actual: usize,
+    },
+    /// An internally generated candidate failed the public lock contract.
+    InvalidGeneratedLock {
+        /// Parser, writer, or semantic-closure failure.
+        reason: String,
     },
     /// Explicit number already appears anywhere in lock history.
     AlreadyUsed {
@@ -117,6 +131,9 @@ impl Display for ReservationError {
                 formatter,
                 "catalog type namespace requires {actual} bytes; maximum is {maximum}"
             ),
+            Self::InvalidGeneratedLock { reason } => {
+                write!(formatter, "generated catalog lock is invalid: {reason}")
+            }
             Self::AlreadyUsed { number } => write!(formatter, "diagnostic number {number} is used"),
             Self::NumberSpaceExhausted => formatter.write_str("diagnostic number space exhausted"),
             Self::InvalidLockPrefix => formatter.write_str("catalog lock prefix is invalid"),
@@ -130,6 +147,11 @@ impl Error for ReservationError {}
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum AcceptanceError {
+    /// An internally generated candidate failed the public lock contract.
+    InvalidGeneratedLock {
+        /// Parser, writer, or semantic-closure failure.
+        reason: String,
+    },
     /// Permanent identity or tombstone history would be violated.
     Forbidden(CompatibilityReport),
     /// Breaking changes were not explicitly acknowledged.
@@ -139,6 +161,9 @@ pub enum AcceptanceError {
 impl Display for AcceptanceError {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
         match self {
+            Self::InvalidGeneratedLock { reason } => {
+                write!(formatter, "generated catalog lock is invalid: {reason}")
+            }
             Self::Forbidden(report) => write!(
                 formatter,
                 "catalog has {} forbidden compatibility change(s)",
@@ -159,6 +184,11 @@ impl Error for AcceptanceError {}
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum RetirementError {
+    /// An internally generated candidate failed the public lock contract.
+    InvalidGeneratedLock {
+        /// Parser, writer, or semantic-closure failure.
+        reason: String,
+    },
     /// Code is absent from lock history.
     UnknownCode {
         /// Missing code.
@@ -200,6 +230,9 @@ pub enum RetirementError {
 impl Display for RetirementError {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
         match self {
+            Self::InvalidGeneratedLock { reason } => {
+                write!(formatter, "generated catalog lock is invalid: {reason}")
+            }
             Self::UnknownCode { code } => write!(formatter, "diagnostic {code} is not locked"),
             Self::NotActive { code, state } => {
                 write!(formatter, "diagnostic {code} cannot retire from {state:?}")

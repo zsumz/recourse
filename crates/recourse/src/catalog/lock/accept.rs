@@ -4,7 +4,7 @@ use crate::catalog::{CatalogArtifact, Code};
 
 use super::{
     AcceptanceError, CatalogLock, CompatibilityReport, LockEntry, LockState, RetirementError,
-    compatibility,
+    closure, compatibility,
     replacement::{self, ReplacementIssue},
     retirement,
 };
@@ -30,18 +30,22 @@ pub(super) fn accept(
     if report.has_breaking() && mode == AcceptanceMode::CompatibleOnly {
         return Err(AcceptanceError::BreakingRequiresAcknowledgement(report));
     }
+    let mut candidate = lock.clone();
     for diagnostic in current.diagnostics() {
         let number = diagnostic.number();
-        match lock
+        match candidate
             .entries
             .binary_search_by_key(&number, LockEntry::number)
         {
-            Ok(index) => lock.entries[index] = LockEntry::active(diagnostic.clone()),
-            Err(index) => lock
+            Ok(index) => candidate.entries[index] = LockEntry::active(diagnostic.clone()),
+            Err(index) => candidate
                 .entries
                 .insert(index, LockEntry::active(diagnostic.clone())),
         }
     }
+    closure::validate(&candidate)
+        .map_err(|reason| AcceptanceError::InvalidGeneratedLock { reason })?;
+    *lock = candidate;
     Ok(report)
 }
 
@@ -52,7 +56,8 @@ pub(super) fn retire<'a>(
     replacement: Option<Code>,
 ) -> Result<&'a LockEntry, RetirementError> {
     retirement::validate(&reason).map_err(RetirementError::from)?;
-    let index = lock
+    let mut candidate = lock.clone();
+    let index = candidate
         .entries
         .iter()
         .position(|entry| entry.code() == code)
@@ -60,8 +65,8 @@ pub(super) fn retire<'a>(
     if replacement.as_ref() == Some(code) {
         return Err(RetirementError::InvalidReplacement { code: code.clone() });
     }
-    let state = lock.entries[index].state();
-    let Some(diagnostic) = lock.entries[index].diagnostic().cloned() else {
+    let state = candidate.entries[index].state();
+    let Some(diagnostic) = candidate.entries[index].diagnostic().cloned() else {
         return Err(RetirementError::NotActive {
             code: code.clone(),
             state,
@@ -78,11 +83,13 @@ pub(super) fn retire<'a>(
         reason,
         replacement,
     };
-    let previous = std::mem::replace(&mut lock.entries[index], retired);
-    if let Err(issue) = replacement::validate(lock) {
-        lock.entries[index] = previous;
+    candidate.entries[index] = retired;
+    if let Err(issue) = replacement::validate(&candidate) {
         return Err(retirement_error(issue));
     }
+    closure::validate(&candidate)
+        .map_err(|reason| RetirementError::InvalidGeneratedLock { reason })?;
+    *lock = candidate;
     Ok(&lock.entries[index])
 }
 

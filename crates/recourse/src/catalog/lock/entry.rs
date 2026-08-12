@@ -100,6 +100,13 @@ impl LockEntry {
         }
     }
 
+    pub(crate) fn diagnostic_mut(&mut self) -> Option<&mut CatalogDiagnostic> {
+        match self {
+            Self::Reserved { .. } => None,
+            Self::Active { diagnostic } | Self::Retired { diagnostic, .. } => Some(diagnostic),
+        }
+    }
+
     /// Explicit retirement rationale when this entry is a tombstone.
     pub fn retirement_reason(&self) -> Option<&str> {
         match self {

@@ -1,13 +1,11 @@
 //! Deterministic lock writing and never-reusing reservation allocation.
 
-use std::io::Write;
-
 use crate::{
     catalog::{Code, CodeNumber, maximum_type_uri_bytes, type_namespace_fits_wire},
     wire::WireLimits,
 };
 
-use super::{CatalogLock, LockEntry, LockWriteError, ReservationError};
+use super::{CatalogLock, LockEntry, ReservationError, closure};
 
 /// Requested reservation allocation strategy.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -28,23 +26,33 @@ pub(super) fn reserve(
             actual: maximum_type_uri_bytes(lock.type_base(), lock.prefix()),
         });
     }
+    let mut candidate = lock.clone();
     let number = match reservation {
-        Reservation::Next => next_number(lock)?,
+        Reservation::Next => next_number(&candidate)?,
         Reservation::Exact(number) => {
-            if lock.entries.iter().any(|entry| entry.number() == number) {
+            if candidate
+                .entries
+                .iter()
+                .any(|entry| entry.number() == number)
+            {
                 return Err(ReservationError::AlreadyUsed { number });
             }
             number
         }
     };
-    let code = Code::new(lock.prefix(), number).map_err(|_| ReservationError::InvalidLockPrefix)?;
-    let type_uri = format!("{}{code}", lock.type_base());
-    let index = lock
+    let code =
+        Code::new(candidate.prefix(), number).map_err(|_| ReservationError::InvalidLockPrefix)?;
+    let type_uri = format!("{}{code}", candidate.type_base());
+    let index = candidate
         .entries
         .binary_search_by_key(&number, LockEntry::number)
         .unwrap_or_else(|index| index);
-    lock.entries
+    candidate
+        .entries
         .insert(index, LockEntry::reserved(number, code, type_uri));
+    closure::validate(&candidate)
+        .map_err(|reason| ReservationError::InvalidGeneratedLock { reason })?;
+    *lock = candidate;
     Ok(&lock.entries[index])
 }
 
@@ -58,12 +66,4 @@ fn next_number(lock: &CatalogLock) -> Result<CodeNumber, ReservationError> {
         None => 1,
     };
     CodeNumber::try_new(next).map_err(|_| ReservationError::NumberSpaceExhausted)
-}
-
-pub(super) fn write_pretty<W: Write>(
-    lock: &CatalogLock,
-    mut writer: W,
-) -> Result<(), LockWriteError> {
-    serde_json::to_writer_pretty(&mut writer, lock).map_err(LockWriteError::Serialize)?;
-    writer.write_all(b"\n").map_err(LockWriteError::Write)
 }
