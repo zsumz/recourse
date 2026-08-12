@@ -67,6 +67,8 @@ mod problem_set_test;
 #[cfg(test)]
 mod retirement_lock_test;
 #[cfg(test)]
+mod schema_instance_test;
+#[cfg(test)]
 mod schema_test;
 #[cfg(test)]
 mod surface_test;
