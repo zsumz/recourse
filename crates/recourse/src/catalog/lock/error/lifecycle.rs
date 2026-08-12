@@ -13,6 +13,15 @@ use super::super::{CompatibilityReport, LockState, retirement::ReasonViolation};
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ReservationError {
+    /// Explicit number already appears anywhere in lock history.
+    AlreadyUsed {
+        /// Rejected permanent number.
+        number: CodeNumber,
+    },
+    /// No larger `u32` identity can be allocated.
+    NumberSpaceExhausted,
+    /// Validated lock prefix unexpectedly failed code construction.
+    InvalidLockPrefix,
     /// The lock namespace cannot represent every positive `u32` identity.
     TypeNamespaceTooLong {
         /// Maximum accepted type URI byte length.
@@ -25,15 +34,6 @@ pub enum ReservationError {
         /// Parser, writer, or semantic-closure failure.
         reason: String,
     },
-    /// Explicit number already appears anywhere in lock history.
-    AlreadyUsed {
-        /// Rejected permanent number.
-        number: CodeNumber,
-    },
-    /// No larger `u32` identity can be allocated.
-    NumberSpaceExhausted,
-    /// Validated lock prefix unexpectedly failed code construction.
-    InvalidLockPrefix,
 }
 
 impl Display for ReservationError {
@@ -59,15 +59,15 @@ impl Error for ReservationError {}
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum AcceptanceError {
+    /// Permanent identity or tombstone history would be violated.
+    Forbidden(CompatibilityReport),
+    /// Breaking changes were not explicitly acknowledged.
+    BreakingRequiresAcknowledgement(CompatibilityReport),
     /// An internally generated candidate failed the public lock contract.
     InvalidGeneratedLock {
         /// Parser, writer, or semantic-closure failure.
         reason: String,
     },
-    /// Permanent identity or tombstone history would be violated.
-    Forbidden(CompatibilityReport),
-    /// Breaking changes were not explicitly acknowledged.
-    BreakingRequiresAcknowledgement(CompatibilityReport),
 }
 
 impl Display for AcceptanceError {
@@ -96,11 +96,6 @@ impl Error for AcceptanceError {}
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum RetirementError {
-    /// An internally generated candidate failed the public lock contract.
-    InvalidGeneratedLock {
-        /// Parser, writer, or semantic-closure failure.
-        reason: String,
-    },
     /// Code is absent from lock history.
     UnknownCode {
         /// Missing code.
@@ -136,6 +131,11 @@ pub enum RetirementError {
     ReasonControlCharacter {
         /// Zero-based character index.
         character_index: usize,
+    },
+    /// An internally generated candidate failed the public lock contract.
+    InvalidGeneratedLock {
+        /// Parser, writer, or semantic-closure failure.
+        reason: String,
     },
 }
 
