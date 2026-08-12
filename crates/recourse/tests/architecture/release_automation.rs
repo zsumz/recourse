@@ -72,3 +72,16 @@ fn signed_tags_verify_published_packages_before_github_release() {
     assert!(key.contains("BEGIN PGP PUBLIC KEY BLOCK"));
     assert_external_actions_are_pinned(&workflow);
 }
+
+#[test]
+fn release_guide_reproduces_the_frozen_api_snapshot() {
+    let guide = read(&workspace_root().join("RELEASING.md"));
+    for required in [
+        "git tag -s api/v0.0.1-rc.2 ed742880b9edd7b692b5dfb585c07c5ceeb7fd43",
+        "git rev-parse 'api/v0.0.1-rc.2^{commit}'",
+        "git push origin api/v0.0.1-rc.2",
+        "Do not move or recreate an API snapshot tag",
+    ] {
+        assert!(guide.contains(required), "release guide omits {required:?}");
+    }
+}

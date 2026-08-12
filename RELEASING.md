@@ -20,6 +20,21 @@ release from the registry's exact archive bytes.
    `scripts/check-clean-tree`. These candidates prove package contents and
    behavior, but are not the later crates.io receipt.
 
+Before opening the release pull request, create and push the signed annotated
+API snapshot expected by source-SemVer CI. The target is the reviewed API
+commit, not the moving branch head:
+
+```sh
+git tag -s api/v0.0.1-rc.2 ed742880b9edd7b692b5dfb585c07c5ceeb7fd43 \
+  -m "recourse api v0.0.1-rc.2"
+test "$(git rev-parse 'api/v0.0.1-rc.2^{commit}')" = \
+  ed742880b9edd7b692b5dfb585c07c5ceeb7fd43
+git push origin api/v0.0.1-rc.2
+```
+
+Do not move or recreate an API snapshot tag. A later API baseline gets a new
+versioned tag and an intentional CI update.
+
 Release commits and annotated tags are PGP-signed by
 `zsumz <shawn@zsumz.com>`. The workflow revision on `main` pins the primary
 fingerprint `B58439871CD2A7275B20CC19EC8E4D26598A0373`, imports the public key
