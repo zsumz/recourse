@@ -115,7 +115,7 @@ fn validate_shape(
         return fail(path, "public evidence must have an object root");
     }
     validate_type(object.get("type"), path)?;
-    format::validate(object.get("format"), object.get("type"), path)?;
+    format::validate(object, path)?;
     validate_string(object.get("pattern"), path, "pattern")?;
     validate_string_array(object.get_mut("required"), path, "required")?;
     validate_scalar_array(object.get_mut("enum"), path)?;

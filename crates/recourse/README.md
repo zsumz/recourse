@@ -80,10 +80,12 @@ evidence must explicitly implement `PublicEvidence`; private source errors use
 the structurally separate `PrivateReport` type.
 
 The evidence-schema profile treats retained string `format` keywords as runtime
-assertions and rejects unknown formats during catalog construction. Schemars
-numeric representation formats remain governed annotations on number/integer
-schemas whose JSON type and range constraints enforce the actual value. The
-exact vocabularies are exposed as `catalog::SUPPORTED_SCHEMA_FORMATS` and
+assertions and rejects unknown formats during catalog construction. Fixed-width
+numeric formats require their exact JSON type and receive complete
+representation bounds. Platform-sized and 128-bit integer formats are rejected
+because the protocol's intermediate JSON representation cannot guarantee their
+portable, lossless encoding. The exact vocabularies are exposed as
+`catalog::SUPPORTED_SCHEMA_FORMATS` and
 `catalog::SUPPORTED_SCHEMA_NUMERIC_FORMATS`.
 
 See the [repository](https://github.com/zsumz/recourse) for the Dispatch
