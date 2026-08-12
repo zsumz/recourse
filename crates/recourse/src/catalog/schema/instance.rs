@@ -1,5 +1,7 @@
 //! Conservative rejection of schemas with impossible default-wire instances.
 
+mod satisfiability;
+
 use std::collections::BTreeSet;
 
 use serde_json::{Map, Value};
@@ -29,7 +31,7 @@ pub(super) fn validate_local(
             validate_fixed_value(value, limits, &format!("{path}/enum/{index}"))?;
         }
     }
-    Ok(())
+    satisfiability::validate(schema, path)
 }
 
 pub(super) fn validate_depth(schema: &Value) -> Result<(), SchemaViolation> {

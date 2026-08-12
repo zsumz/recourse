@@ -98,3 +98,50 @@ fn provably_mandatory_nesting_must_fit_inside_the_envelope() {
     let violation = schema::validate_artifact(&mut schema_value).err();
     assert!(violation.is_some_and(|error| error.reason.contains("mandatory evidence nesting")));
 }
+
+#[test]
+fn locally_contradictory_constraints_are_rejected() {
+    for mut invalid in [
+        property(&serde_json::json!({
+            "type": "integer", "format": "int8", "minimum": 200
+        })),
+        property(&serde_json::json!({
+            "type": "integer", "format": "uint8", "enum": [300]
+        })),
+        property(&serde_json::json!({
+            "type": "integer", "format": "uint8", "const": 300
+        })),
+        property(&serde_json::json!({
+            "type": "number", "exclusiveMinimum": 10, "maximum": 10
+        })),
+        property(&serde_json::json!({
+            "type": "string", "minLength": 5, "maxLength": 4
+        })),
+        property(&serde_json::json!({
+            "type": "array", "minItems": 2, "maxItems": 1
+        })),
+    ] {
+        assert!(
+            schema::validate_artifact(&mut invalid).is_err(),
+            "{invalid}"
+        );
+    }
+}
+
+#[test]
+fn a_partially_valid_enum_remains_satisfiable() {
+    let mut value = property(&serde_json::json!({
+        "type": "integer", "format": "uint8", "enum": [10, 300]
+    }));
+
+    assert!(schema::validate_artifact(&mut value).is_ok());
+}
+
+fn property(constraints: &serde_json::Value) -> serde_json::Value {
+    serde_json::json!({
+        "type": "object",
+        "properties": {"value": constraints},
+        "required": ["value"],
+        "additionalProperties": false
+    })
+}
