@@ -398,6 +398,7 @@
         "properties": {
           "attempt": {
             "format": "uint32",
+            "maximum": 4294967295,
             "minimum": 0,
             "type": "integer"
           },
@@ -417,6 +418,7 @@
             "properties": {
               "created_artifacts": {
                 "format": "uint32",
+                "maximum": 4294967295,
                 "minimum": 0,
                 "type": "integer"
               },
@@ -448,6 +450,7 @@
         "properties": {
           "consecutive_failures": {
             "format": "uint32",
+            "maximum": 4294967295,
             "minimum": 0,
             "type": "integer"
           }
