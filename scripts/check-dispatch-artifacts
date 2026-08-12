@@ -26,6 +26,12 @@ cargo run --quiet --locked \
   --manifest-path "$consumer_manifest" \
   -p recourse-canonical-preserve-order-consumer \
   >"$artifact_tmp/canonical-preserve-order.json"
+cargo run --quiet --locked \
+  --manifest-path "$consumer_manifest" \
+  -p recourse-raw-value-consumer
+cargo run --quiet --locked \
+  --manifest-path "$consumer_manifest" \
+  -p recourse-arbitrary-precision-consumer
 if ! cmp --silent \
   "$artifact_tmp/canonical-default.json" \
   "$artifact_tmp/canonical-preserve-order.json"; then

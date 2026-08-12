@@ -65,3 +65,32 @@ fn preserve_order_consumers_must_match_default_canonical_bytes() {
         assert!(script.contains(required), "canonical gate omits {required}");
     }
 }
+
+#[test]
+fn raw_json_feature_consumers_must_fail_closed() {
+    let workspace = workspace_root();
+    for (directory, feature) in [
+        ("raw-value", "raw_value"),
+        ("arbitrary-precision", "arbitrary_precision"),
+    ] {
+        let manifest = read(
+            &workspace
+                .join("conformance/canonical-json")
+                .join(directory)
+                .join("Cargo.toml"),
+        )
+        .parse::<toml::Value>()
+        .unwrap_or_else(|error| panic!("parse {directory} manifest: {error}"));
+        assert_eq!(
+            manifest["dependencies"]["serde_json"]["features"][0].as_str(),
+            Some(feature)
+        );
+    }
+    let script = read(&workspace.join("scripts/check-dispatch-artifacts"));
+    for required in [
+        "recourse-raw-value-consumer",
+        "recourse-arbitrary-precision-consumer",
+    ] {
+        assert!(script.contains(required), "canonical gate omits {required}");
+    }
+}

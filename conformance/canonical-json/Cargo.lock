@@ -616,6 +616,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "recourse-arbitrary-precision-consumer"
+version = "0.0.0"
+dependencies = [
+ "recourse",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "recourse-canonical-default-consumer"
 version = "0.0.0"
 dependencies = [
@@ -627,6 +637,16 @@ dependencies = [
 
 [[package]]
 name = "recourse-canonical-preserve-order-consumer"
+version = "0.0.0"
+dependencies = [
+ "recourse",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "recourse-raw-value-consumer"
 version = "0.0.0"
 dependencies = [
  "recourse",

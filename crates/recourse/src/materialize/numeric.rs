@@ -1,6 +1,7 @@
 //! Identity-preserving numeric checks around the actual JSON serialization pass.
 
 mod compound;
+mod token;
 
 use serde::{Serialize, Serializer, ser::Error as _};
 
@@ -138,6 +139,7 @@ impl<S: Serializer> Serializer for CheckedSerializer<S> {
         name: &'static str,
         value: &T,
     ) -> Result<Self::Ok, Self::Error> {
+        token::reject::<S::Error>(name)?;
         self.0.serialize_newtype_struct(name, &Checked(value))
     }
 
@@ -191,6 +193,7 @@ impl<S: Serializer> Serializer for CheckedSerializer<S> {
         name: &'static str,
         length: usize,
     ) -> Result<Self::SerializeStruct, Self::Error> {
+        token::reject::<S::Error>(name)?;
         self.0.serialize_struct(name, length).map(CheckedCompound)
     }
 
