@@ -18,6 +18,10 @@ use serde::{
 /// an explicit declaration that the type contains caller-visible protocol data
 /// rather than private source-error material.
 ///
+/// Retained JSON Schema `format` keywords are runtime assertions. Catalog
+/// construction rejects formats outside
+/// [`SUPPORTED_SCHEMA_FORMATS`](crate::catalog::SUPPORTED_SCHEMA_FORMATS).
+///
 /// Private reports cannot cross this boundary:
 ///
 /// ```compile_fail

@@ -1,6 +1,7 @@
 //! Deterministic evidence-schema normalization and conservative validation.
 
 mod compile;
+mod format;
 mod resource;
 mod traversal;
 
@@ -8,6 +9,9 @@ use schemars::SchemaGenerator;
 use serde_json::{Map, Value};
 
 use crate::diagnostic::PublicEvidence;
+
+pub(crate) use compile::build_validator;
+pub use format::SUPPORTED_SCHEMA_FORMATS;
 
 const ANNOTATIONS: &[&str] = &[
     "$schema",
@@ -61,7 +65,7 @@ pub(crate) fn normalize<E: PublicEvidence>() -> Result<Value, SchemaViolation> {
     visit_schema(&mut schema, "$", true, &mut references)?;
     resource::validate(&schema)?;
     validate_references(&schema, references)?;
-    compile::validator(&schema)?;
+    build_validator(&schema)?;
     schema.sort_all_objects();
     Ok(schema)
 }
@@ -72,7 +76,7 @@ pub(crate) fn validate_artifact(schema: &mut Value) -> Result<(), SchemaViolatio
     visit_schema(schema, "$", true, &mut references)?;
     resource::validate(schema)?;
     validate_references(schema, references)?;
-    compile::validator(schema)?;
+    build_validator(schema)?;
     schema.sort_all_objects();
     Ok(())
 }
@@ -111,7 +115,7 @@ fn validate_shape(
         return fail(path, "public evidence must have an object root");
     }
     validate_type(object.get("type"), path)?;
-    validate_string(object.get("format"), path, "format")?;
+    format::validate(object.get("format"), path)?;
     validate_string(object.get("pattern"), path, "pattern")?;
     validate_string_array(object.get_mut("required"), path, "required")?;
     validate_scalar_array(object.get_mut("enum"), path)?;

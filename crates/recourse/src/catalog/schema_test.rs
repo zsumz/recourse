@@ -86,3 +86,25 @@ fn malformed_keyword_values_and_patterns_are_rejected() {
         );
     }
 }
+
+#[test]
+fn supported_formats_are_runtime_assertions_and_unknown_formats_fail() {
+    let mut uuid = serde_json::json!({
+        "type": "object",
+        "properties": {"id": {"type": "string", "format": "uuid"}},
+        "required": ["id"],
+        "additionalProperties": false
+    });
+    assert!(schema::validate_artifact(&mut uuid).is_ok());
+    let Some(validator) = schema::build_validator(&uuid).ok() else {
+        panic!("supported UUID schema must compile");
+    };
+    assert!(!validator.is_valid(&serde_json::json!({"id": "not-a-uuid"})));
+
+    let mut unknown = serde_json::json!({
+        "type": "object",
+        "properties": {"id": {"type": "string", "format": "future-id"}}
+    });
+    let error = schema::validate_artifact(&mut unknown).err();
+    assert!(error.is_some_and(|violation| violation.reason.contains("unsupported format")));
+}

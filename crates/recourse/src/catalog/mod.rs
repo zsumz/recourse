@@ -33,6 +33,7 @@ pub use metadata::{
 };
 pub(crate) use problem_set::valid_problem_set_id;
 pub use problem_set::{MAX_PROBLEM_SET_ID_BYTES, ProblemSet, ProblemSetBuilder};
+pub use schema::SUPPORTED_SCHEMA_FORMATS;
 pub use spec::CatalogSpec;
 pub(crate) use type_uri::{valid_type_base, valid_type_uri};
 pub(crate) use validator::{DiagnosticValidators, validate as validate_value};

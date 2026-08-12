@@ -79,6 +79,10 @@ The catalog owns the status, headers, JSON shape, code, and type URI. Public
 evidence must explicitly implement `PublicEvidence`; private source errors use
 the structurally separate `PrivateReport` type.
 
+The evidence-schema profile treats retained JSON Schema `format` keywords as
+runtime assertions and rejects unknown formats during catalog construction.
+The exact supported vocabulary is exposed as `catalog::SUPPORTED_SCHEMA_FORMATS`.
+
 See the [repository](https://github.com/zsumz/recourse) for the Dispatch
 reference implementation, executable conformance fixtures, and the canonical
 verification gate for the workspace and publishable package artifacts.

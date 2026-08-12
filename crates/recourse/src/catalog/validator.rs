@@ -4,7 +4,7 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use serde_json::Value;
 
-use super::{CatalogDiagnostic, CatalogIssue, CodeNumber};
+use super::{CatalogDiagnostic, CatalogIssue, CodeNumber, schema};
 
 #[derive(Debug)]
 pub(crate) struct DiagnosticValidators {
@@ -81,9 +81,9 @@ fn compile_one(
 }
 
 fn compile(schema: &Value) -> Result<Arc<jsonschema::Validator>, String> {
-    jsonschema::draft202012::new(schema)
+    schema::build_validator(schema)
         .map(Arc::new)
-        .map_err(|error| format!("schema cannot be compiled: {error}"))
+        .map_err(|violation| violation.reason)
 }
 
 fn value_path(path: impl std::fmt::Display) -> String {

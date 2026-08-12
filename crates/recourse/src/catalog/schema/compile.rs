@@ -13,9 +13,11 @@ pub(super) fn validate_draft(schema: &Value) -> Result<(), SchemaViolation> {
     })
 }
 
-pub(super) fn validator(schema: &Value) -> Result<(), SchemaViolation> {
-    jsonschema::draft202012::new(schema)
-        .map(|_| ())
+pub(crate) fn build_validator(schema: &Value) -> Result<jsonschema::Validator, SchemaViolation> {
+    jsonschema::draft202012::options()
+        .should_validate_formats(true)
+        .should_ignore_unknown_formats(false)
+        .build(schema)
         .map_err(|error| SchemaViolation {
             path: schema_path(error.schema_path()),
             reason: format!("schema cannot be compiled: {error}"),
