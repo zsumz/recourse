@@ -1,6 +1,7 @@
 //! Conservative catalog compatibility classification against accepted history.
 
 mod change;
+mod problem_set;
 mod schema;
 
 use crate::catalog::{CatalogArtifact, CatalogDiagnostic};
@@ -33,6 +34,7 @@ pub(super) fn check(lock: &CatalogLock, current: &CatalogArtifact) -> Compatibil
             );
         }
     }
+    problem_set::compare(lock, current, &mut changes);
     CompatibilityReport::new(changes)
 }
 

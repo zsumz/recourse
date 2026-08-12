@@ -43,6 +43,7 @@ pub(super) fn accept(
                 .insert(index, LockEntry::active(diagnostic.clone())),
         }
     }
+    candidate.problem_sets = current.problem_sets().clone();
     closure::validate(&candidate)
         .map_err(|reason| AcceptanceError::InvalidGeneratedLock { reason })?;
     *lock = candidate;
@@ -84,6 +85,9 @@ pub(super) fn retire<'a>(
         replacement,
     };
     candidate.entries[index] = retired;
+    for members in candidate.problem_sets.values_mut() {
+        members.retain(|member| member != code);
+    }
     if let Err(issue) = replacement::validate(&candidate) {
         return Err(retirement_error(issue));
     }

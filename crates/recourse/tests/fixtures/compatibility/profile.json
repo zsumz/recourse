@@ -17,6 +17,10 @@
     { "id": "REC-COMPAT-014", "severity": "breaking" },
     { "id": "REC-COMPAT-015", "severity": "breaking" },
     { "id": "REC-COMPAT-016", "severity": "breaking" },
-    { "id": "REC-COMPAT-017", "severity": "breaking" }
+    { "id": "REC-COMPAT-017", "severity": "breaking" },
+    { "id": "REC-COMPAT-018", "severity": "compatible" },
+    { "id": "REC-COMPAT-019", "severity": "breaking" },
+    { "id": "REC-COMPAT-020", "severity": "breaking" },
+    { "id": "REC-COMPAT-021", "severity": "compatible" }
   ]
 }

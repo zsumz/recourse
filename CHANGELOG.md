@@ -36,6 +36,7 @@ ship as one versioned cohort.
 - catalog-aware client conformance findings for type, status, and headers;
 - tagged-release verification and GitHub release receipts;
 - packaged HTTP and CLI smoke coverage driven by Smoque.
+- lock-governed API-operation Problem sets with explicit compatibility rules.
 
 ### Changed
 

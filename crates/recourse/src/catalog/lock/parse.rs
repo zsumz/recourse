@@ -70,6 +70,7 @@ fn validate(lock: &CatalogLock) -> Result<(), LockParseError> {
     }
     validate_definitions(lock)?;
     validate_entries(lock)?;
+    validate_problem_sets(lock)?;
     validate_replacements(lock)
 }
 
@@ -99,13 +100,31 @@ fn validate_definitions(lock: &CatalogLock) -> Result<(), LockParseError> {
         "schema_version": 1,
         "catalog": &lock.catalog,
         "diagnostics": diagnostics,
-        "problem_sets": {},
+        "problem_sets": &lock.problem_sets,
     });
     let body = serde_json::to_vec(&artifact).map_err(LockParseError::Structure)?;
     CatalogArtifact::from_slice(&body).map_err(|error| LockParseError::Invalid {
         path: "entries".to_owned(),
         reason: error.to_string(),
     })?;
+    Ok(())
+}
+
+fn validate_problem_sets(lock: &CatalogLock) -> Result<(), LockParseError> {
+    for (id, members) in &lock.problem_sets {
+        for member in members {
+            let active = lock
+                .entries
+                .iter()
+                .any(|entry| entry.code() == member && matches!(entry, LockEntry::Active { .. }));
+            if !active {
+                return invalid(
+                    &format!("problem_sets.{id}"),
+                    &format!("member {member} must identify an active lock entry"),
+                );
+            }
+        }
+    }
     Ok(())
 }
 

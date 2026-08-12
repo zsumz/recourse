@@ -14,7 +14,7 @@ mod test_support;
 mod wire;
 mod write;
 
-use std::io::Write;
+use std::{collections::BTreeMap, io::Write};
 
 use serde::{Deserialize, Serialize};
 
@@ -46,6 +46,7 @@ pub struct CatalogLock {
     schema_version: u32,
     catalog: LockIdentity,
     entries: Vec<LockEntry>,
+    problem_sets: BTreeMap<String, Vec<super::Code>>,
 }
 
 impl CatalogLock {
@@ -60,6 +61,7 @@ impl CatalogLock {
                 .cloned()
                 .map(LockEntry::active)
                 .collect(),
+            problem_sets: artifact.problem_sets().clone(),
         }
     }
 
@@ -91,6 +93,11 @@ impl CatalogLock {
     /// Historical entries in strictly increasing numeric order.
     pub fn entries(&self) -> &[LockEntry] {
         &self.entries
+    }
+
+    /// Accepted HTTP diagnostic codes for each governed API operation ID.
+    pub const fn problem_sets(&self) -> &BTreeMap<String, Vec<super::Code>> {
+        &self.problem_sets
     }
 
     /// Writes deterministic pretty JSON followed by one newline.

@@ -1,5 +1,7 @@
 //! Private deserialization shapes converted into validated lock domain values.
 
+use std::collections::BTreeMap;
+
 use serde::Deserialize;
 
 use crate::catalog::{Code, CodeNumber, artifact::CatalogDiagnosticWire};
@@ -12,6 +14,8 @@ pub(super) struct CatalogLockWire {
     schema_version: u32,
     catalog: LockIdentity,
     entries: Vec<LockEntryWire>,
+    #[serde(default)]
+    problem_sets: BTreeMap<String, Vec<Code>>,
 }
 
 impl CatalogLockWire {
@@ -24,6 +28,7 @@ impl CatalogLockWire {
                 .into_iter()
                 .map(LockEntryWire::into_domain)
                 .collect(),
+            problem_sets: self.problem_sets,
         }
     }
 }

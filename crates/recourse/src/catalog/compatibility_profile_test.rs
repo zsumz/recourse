@@ -7,10 +7,12 @@ use super::CompatibilityReport;
 const IMPLEMENTATION: &str = concat!(
     include_str!("lock/compatibility/change/input/lifecycle.rs"),
     include_str!("lock/compatibility/change/input/diagnostic.rs"),
+    include_str!("lock/compatibility/change/input/problem_set.rs"),
     include_str!("lock/compatibility/change/input/schema.rs"),
 );
 const BEHAVIOR: &str = concat!(
     include_str!("compatibility_identity_test.rs"),
+    include_str!("compatibility_problem_set_test.rs"),
     include_str!("compatibility_schema_test.rs"),
     include_str!("compatibility_test.rs"),
 );
@@ -33,7 +35,7 @@ fn profile_names_every_implemented_and_exercised_rule() {
 
     assert_eq!(profile_ids, implemented_ids);
     assert!(profile_ids.is_subset(&behavior_ids));
-    assert_eq!(profile_ids.len(), 17);
+    assert_eq!(profile_ids.len(), 21);
 }
 
 fn stable_ids(source: &str) -> BTreeSet<&str> {

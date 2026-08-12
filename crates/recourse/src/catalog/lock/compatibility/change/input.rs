@@ -2,6 +2,7 @@
 
 mod diagnostic;
 mod lifecycle;
+mod problem_set;
 mod schema;
 
 use crate::catalog::Code;

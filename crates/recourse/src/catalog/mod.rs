@@ -53,11 +53,15 @@ mod code_test;
 #[cfg(test)]
 mod compatibility_identity_test;
 #[cfg(test)]
+mod compatibility_problem_set_test;
+#[cfg(test)]
 mod compatibility_profile_test;
 #[cfg(test)]
 mod compatibility_schema_test;
 #[cfg(test)]
 mod compatibility_test;
+#[cfg(test)]
+mod lock_problem_set_test;
 #[cfg(test)]
 mod lock_test;
 #[cfg(test)]
