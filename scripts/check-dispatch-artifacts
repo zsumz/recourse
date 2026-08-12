@@ -6,11 +6,33 @@ cd "$repo_root"
 
 artifact_tmp=$(mktemp -d)
 trap 'rm -rf -- "$artifact_tmp"' EXIT
+consumer_manifest=conformance/canonical-json/Cargo.toml
 
 cargo run --quiet --locked -p dispatch-catalog >"$artifact_tmp/catalog.json"
 if ! cmp --silent diagnostics/catalog.json "$artifact_tmp/catalog.json"; then
   echo "dispatch catalog drifted; regenerate diagnostics/catalog.json" >&2
   diff -u diagnostics/catalog.json "$artifact_tmp/catalog.json" || true
+  exit 1
+fi
+
+cargo fmt --manifest-path "$consumer_manifest" --all -- --check
+cargo clippy --manifest-path "$consumer_manifest" \
+  --workspace --all-targets --locked -- -D warnings
+cargo run --quiet --locked \
+  --manifest-path "$consumer_manifest" \
+  -p recourse-canonical-default-consumer \
+  >"$artifact_tmp/canonical-default.json"
+cargo run --quiet --locked \
+  --manifest-path "$consumer_manifest" \
+  -p recourse-canonical-preserve-order-consumer \
+  >"$artifact_tmp/canonical-preserve-order.json"
+if ! cmp --silent \
+  "$artifact_tmp/canonical-default.json" \
+  "$artifact_tmp/canonical-preserve-order.json"; then
+  echo "canonical JSON changed under downstream preserve_order features" >&2
+  diff -u \
+    "$artifact_tmp/canonical-default.json" \
+    "$artifact_tmp/canonical-preserve-order.json" || true
   exit 1
 fi
 

@@ -52,6 +52,12 @@ impl DiagnosticSurfaces {
         }
     }
 
+    pub(crate) fn impact_schema_mut(&mut self) -> Option<&mut Value> {
+        self.operation
+            .as_mut()
+            .map(|surface| &mut surface.impact_schema)
+    }
+
     pub(crate) const fn supports_health(&self) -> bool {
         self.health.is_some()
     }

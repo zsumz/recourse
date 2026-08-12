@@ -167,6 +167,10 @@ impl CatalogDiagnostic {
         &self.evidence_schema
     }
 
+    pub(crate) fn evidence_schema_mut(&mut self) -> &mut Value {
+        &mut self.evidence_schema
+    }
+
     /// Governed HTTP status when the Problem surface is registered.
     pub const fn http_status(&self) -> Option<u16> {
         self.surfaces.http_status()
@@ -185,6 +189,10 @@ impl CatalogDiagnostic {
     /// Reviewed impact schema when the durable-operation surface is registered.
     pub const fn impact_schema(&self) -> Option<&Value> {
         self.surfaces.impact_schema()
+    }
+
+    pub(crate) fn impact_schema_mut(&mut self) -> Option<&mut Value> {
+        self.surfaces.impact_schema_mut()
     }
 
     /// Whether this diagnostic is registered as a health finding.

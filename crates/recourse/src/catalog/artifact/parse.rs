@@ -17,13 +17,13 @@ pub use error::ArtifactParseError;
 
 pub(super) fn parse_artifact(body: &[u8]) -> Result<CatalogArtifact, ArtifactParseError> {
     let object = decode_object(body, artifact_limits()).map_err(ArtifactParseError::Decode)?;
-    let artifact =
+    let mut artifact =
         serde_json::from_value(Value::Object(object)).map_err(ArtifactParseError::Structure)?;
-    validate(&artifact)?;
+    validate(&mut artifact)?;
     Ok(artifact)
 }
 
-fn validate(artifact: &CatalogArtifact) -> Result<(), ArtifactParseError> {
+fn validate(artifact: &mut CatalogArtifact) -> Result<(), ArtifactParseError> {
     if artifact.schema_version != 1 {
         return Err(ArtifactParseError::UnsupportedSchemaVersion {
             found: artifact.schema_version,
@@ -61,29 +61,29 @@ fn validate_identity(artifact: &CatalogArtifact) -> Result<(), ArtifactParseErro
     Ok(())
 }
 
-fn validate_diagnostics(artifact: &CatalogArtifact) -> Result<(), ArtifactParseError> {
+fn validate_diagnostics(artifact: &mut CatalogArtifact) -> Result<(), ArtifactParseError> {
     for pair in artifact.diagnostics.windows(2) {
         if pair[0].number >= pair[1].number {
             return invalid("diagnostics", "numbers must be strictly increasing");
         }
     }
-    for diagnostic in &artifact.diagnostics {
-        validate_diagnostic(artifact, diagnostic)?;
+    let identity = &artifact.catalog;
+    for diagnostic in &mut artifact.diagnostics {
+        validate_diagnostic(identity, diagnostic)?;
     }
     Ok(())
 }
 
 fn validate_diagnostic(
-    artifact: &CatalogArtifact,
-    diagnostic: &CatalogDiagnostic,
+    identity: &super::CatalogIdentity,
+    diagnostic: &mut CatalogDiagnostic,
 ) -> Result<(), ArtifactParseError> {
     let path = format!("diagnostics.{}", diagnostic.code);
-    if diagnostic.code.prefix() != artifact.catalog.prefix
-        || diagnostic.code.number() != diagnostic.number
+    if diagnostic.code.prefix() != identity.prefix || diagnostic.code.number() != diagnostic.number
     {
         return invalid(&path, "number and code must identify the catalog namespace");
     }
-    if diagnostic.type_uri != format!("{}{}", artifact.catalog.type_base, diagnostic.code) {
+    if diagnostic.type_uri != format!("{}{}", identity.type_base, diagnostic.code) {
         return invalid(
             &format!("{path}.type"),
             "must be derived from code and type base",
@@ -110,14 +110,17 @@ fn validate_diagnostic(
     surface::validate(diagnostic, &path)
 }
 
-fn validate_schemas(diagnostic: &CatalogDiagnostic, path: &str) -> Result<(), ArtifactParseError> {
-    schema::validate_artifact(&diagnostic.evidence_schema).map_err(|violation| {
+fn validate_schemas(
+    diagnostic: &mut CatalogDiagnostic,
+    path: &str,
+) -> Result<(), ArtifactParseError> {
+    schema::validate_artifact(diagnostic.evidence_schema_mut()).map_err(|violation| {
         ArtifactParseError::Invalid {
             path: format!("{path}.evidence_schema{}", violation.path),
             reason: violation.reason,
         }
     })?;
-    if let Some(impact) = diagnostic.impact_schema() {
+    if let Some(impact) = diagnostic.impact_schema_mut() {
         schema::validate_artifact(impact).map_err(|violation| ArtifactParseError::Invalid {
             path: format!("{path}.surfaces.operation.impact_schema{}", violation.path),
             reason: violation.reason,

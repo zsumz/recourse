@@ -1,9 +1,8 @@
 //! Deterministic evidence-schema normalization and conservative validation.
 
+mod compile;
 mod resource;
 mod traversal;
-
-use std::fmt::Display;
 
 use schemars::SchemaGenerator;
 use serde_json::{Map, Value};
@@ -57,48 +56,25 @@ pub(crate) fn normalize<E: PublicEvidence>() -> Result<Value, SchemaViolation> {
     let mut schema = SchemaGenerator::default()
         .into_root_schema_for::<E>()
         .to_value();
-    validate_draft(&schema)?;
+    compile::validate_draft(&schema)?;
     let mut references = Vec::new();
     visit_schema(&mut schema, "$", true, &mut references)?;
     resource::validate(&schema)?;
     validate_references(&schema, references)?;
-    compile(&schema)?;
+    compile::validator(&schema)?;
+    schema.sort_all_objects();
     Ok(schema)
 }
 
-pub(crate) fn validate_artifact(schema: &Value) -> Result<(), SchemaViolation> {
-    validate_draft(schema)?;
-    let mut schema = schema.clone();
+pub(crate) fn validate_artifact(schema: &mut Value) -> Result<(), SchemaViolation> {
+    compile::validate_draft(schema)?;
     let mut references = Vec::new();
-    visit_schema(&mut schema, "$", true, &mut references)?;
-    resource::validate(&schema)?;
-    validate_references(&schema, references)?;
-    compile(&schema)
-}
-
-fn validate_draft(schema: &Value) -> Result<(), SchemaViolation> {
-    jsonschema::draft202012::meta::validate(schema).map_err(|error| SchemaViolation {
-        path: schema_path(error.instance_path()),
-        reason: format!("invalid Draft 2020-12 schema: {error}"),
-    })
-}
-
-fn compile(schema: &Value) -> Result<(), SchemaViolation> {
-    jsonschema::draft202012::new(schema)
-        .map(|_| ())
-        .map_err(|error| SchemaViolation {
-            path: schema_path(error.schema_path()),
-            reason: format!("schema cannot be compiled: {error}"),
-        })
-}
-
-fn schema_path(path: impl Display) -> String {
-    let path = path.to_string();
-    if path.is_empty() {
-        "$".to_owned()
-    } else {
-        format!("${path}")
-    }
+    visit_schema(schema, "$", true, &mut references)?;
+    resource::validate(schema)?;
+    validate_references(schema, references)?;
+    compile::validator(schema)?;
+    schema.sort_all_objects();
+    Ok(())
 }
 
 fn visit_schema(

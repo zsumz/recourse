@@ -31,5 +31,7 @@ pub(crate) fn object<T: Serialize>(
             actual,
         } => MaterializeError::Limit(WireLimitError::new(limit, maximum, actual)),
     })?;
-    Ok(Value::Object(object))
+    let mut value = Value::Object(object);
+    value.sort_all_objects();
+    Ok(value)
 }
