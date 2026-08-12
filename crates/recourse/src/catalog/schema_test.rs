@@ -101,6 +101,18 @@ fn supported_formats_are_runtime_assertions_and_unknown_formats_fail() {
     };
     assert!(!validator.is_valid(&serde_json::json!({"id": "not-a-uuid"})));
 
+    let mut numeric = serde_json::json!({
+        "type": "object",
+        "properties": {"count": {"type": "integer", "format": "uint32", "minimum": 0}}
+    });
+    assert!(schema::validate_artifact(&mut numeric).is_ok());
+
+    let mut misplaced = serde_json::json!({
+        "type": "object",
+        "properties": {"id": {"type": "string", "format": "uint32"}}
+    });
+    assert!(schema::validate_artifact(&mut misplaced).is_err());
+
     let mut unknown = serde_json::json!({
         "type": "object",
         "properties": {"id": {"type": "string", "format": "future-id"}}

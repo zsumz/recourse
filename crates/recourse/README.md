@@ -79,9 +79,12 @@ The catalog owns the status, headers, JSON shape, code, and type URI. Public
 evidence must explicitly implement `PublicEvidence`; private source errors use
 the structurally separate `PrivateReport` type.
 
-The evidence-schema profile treats retained JSON Schema `format` keywords as
-runtime assertions and rejects unknown formats during catalog construction.
-The exact supported vocabulary is exposed as `catalog::SUPPORTED_SCHEMA_FORMATS`.
+The evidence-schema profile treats retained string `format` keywords as runtime
+assertions and rejects unknown formats during catalog construction. Schemars
+numeric representation formats remain governed annotations on number/integer
+schemas whose JSON type and range constraints enforce the actual value. The
+exact vocabularies are exposed as `catalog::SUPPORTED_SCHEMA_FORMATS` and
+`catalog::SUPPORTED_SCHEMA_NUMERIC_FORMATS`.
 
 See the [repository](https://github.com/zsumz/recourse) for the Dispatch
 reference implementation, executable conformance fixtures, and the canonical
