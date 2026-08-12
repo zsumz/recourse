@@ -48,6 +48,24 @@ impl Serialize for StreamingObject<'_> {
     }
 }
 
+struct WideInteger;
+
+impl Serialize for WideInteger {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(1))?;
+        map.serialize_entry("value", &u128::MAX)?;
+        map.end()
+    }
+}
+
+#[derive(Serialize)]
+struct FloatValue<T> {
+    value: T,
+}
+
 #[test]
 fn duplicate_members_are_rejected_instead_of_collapsed() {
     let error = object(&DuplicateMembers, WireLimits::default())
@@ -75,4 +93,40 @@ fn scalar_roots_remain_distinct_from_serialization_failures() {
         object(&"scalar", WireLimits::default()),
         Err(MaterializeError::NotObject)
     ));
+}
+
+#[test]
+fn numbers_that_serde_json_would_rewrite_fail_before_materialization() {
+    for result in [
+        object(&WideInteger, WireLimits::default()),
+        object(
+            &FloatValue {
+                value: Some(f32::NAN),
+            },
+            WireLimits::default(),
+        ),
+        object(
+            &FloatValue {
+                value: Some(f64::INFINITY),
+            },
+            WireLimits::default(),
+        ),
+    ] {
+        assert!(matches!(result, Err(MaterializeError::Json(_))));
+    }
+}
+
+#[test]
+fn finite_float_boundaries_retain_their_public_json_values() {
+    for value in [f32::MIN, f32::MAX] {
+        let actual = object(&FloatValue { value }, WireLimits::default())
+            .unwrap_or_else(|error| panic!("finite float must materialize: {error:?}"));
+        let expected = serde_json::from_slice::<serde_json::Value>(
+            serde_json::to_string(&FloatValue { value })
+                .unwrap_or_else(|error| panic!("fixture must encode: {error}"))
+                .as_bytes(),
+        )
+        .unwrap_or_else(|error| panic!("fixture must parse: {error}"));
+        assert_eq!(actual, expected);
+    }
 }

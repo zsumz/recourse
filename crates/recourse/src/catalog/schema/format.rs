@@ -124,8 +124,8 @@ fn numeric_representation(format: &str) -> Option<NumericRepresentation> {
         "uint32" => Some(integer(0, u32::MAX.into())),
         "uint64" => Some(integer(0, i128::from(u64::MAX))),
         "float" => Some(NumericRepresentation::Number {
-            minimum: -f64::from(f32::MAX),
-            maximum: f64::from(f32::MAX),
+            minimum: public_f32(f32::MIN)?,
+            maximum: public_f32(f32::MAX)?,
         }),
         "double" => Some(NumericRepresentation::Number {
             minimum: -f64::MAX,
@@ -133,6 +133,10 @@ fn numeric_representation(format: &str) -> Option<NumericRepresentation> {
         }),
         _ => None,
     }
+}
+
+fn public_f32(value: f32) -> Option<f64> {
+    value.to_string().parse().ok()
 }
 
 fn apply_integer_bound(

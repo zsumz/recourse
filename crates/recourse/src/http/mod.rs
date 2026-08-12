@@ -35,6 +35,8 @@ mod problem_header_test;
 #[cfg(test)]
 mod problem_numeric_contract_test;
 #[cfg(test)]
+mod problem_numeric_materialization_test;
+#[cfg(test)]
 mod problem_test;
 #[cfg(test)]
 mod problem_uri_test;

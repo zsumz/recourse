@@ -1,5 +1,7 @@
 //! Bounded, duplicate-aware materialization of custom public serializers.
 
+mod numeric;
+
 use serde::Serialize;
 use serde_json::Value;
 
@@ -8,6 +10,7 @@ use crate::{
     wire::{BoundedJsonError, WireLimitError, WireLimits, to_bounded_vec},
 };
 
+#[derive(Debug)]
 pub(crate) enum MaterializeError {
     Json(serde_json::Error),
     NotObject,
@@ -18,7 +21,7 @@ pub(crate) fn object<T: Serialize>(
     value: &T,
     limits: WireLimits,
 ) -> Result<Value, MaterializeError> {
-    let body = to_bounded_vec(value, limits).map_err(|error| match error {
+    let body = to_bounded_vec(&numeric::checked(value), limits).map_err(|error| match error {
         BoundedJsonError::Serialize(error) => MaterializeError::Json(error),
         BoundedJsonError::Limit(error) => MaterializeError::Limit(error),
     })?;
