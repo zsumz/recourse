@@ -70,6 +70,8 @@ fn canonical_gate_proves_extracted_packages_through_smoque() {
     for required in [
         "tar -xzf",
         "cargo test --manifest-path",
+        "package_test_target=\"$package_work/self-tests\"",
+        "RECOURSE_PACKAGE_TARGET=$package_work/consumer",
         "RECOURSE_CORE_PACKAGE",
         "scripts/smoke-smoque smoke/package.smoke.mts --ci",
     ] {

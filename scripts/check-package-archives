@@ -58,7 +58,7 @@ done
 core_path="$package_work/packages/recourse-$release_version"
 axum_path="$package_work/packages/recourse-axum-$release_version"
 cli_path="$package_work/packages/recourse-cli-$release_version"
-package_test_target="$repo_root/target/package-self-tests"
+package_test_target="$package_work/self-tests"
 
 test_extracted_package() {
   local manifest=$1
@@ -85,6 +85,6 @@ echo "$label crate self-tests passed"
 RECOURSE_CORE_PACKAGE=$core_path \
 RECOURSE_AXUM_PACKAGE=$axum_path \
 RECOURSE_CLI_PACKAGE=$cli_path \
-RECOURSE_PACKAGE_TARGET=$repo_root/target/package-consumer \
+RECOURSE_PACKAGE_TARGET=$package_work/consumer \
 RECOURSE_RELEASE_VERSION=$release_version \
   scripts/smoke-smoque smoke/package.smoke.mts --ci
