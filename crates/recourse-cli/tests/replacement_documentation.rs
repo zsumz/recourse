@@ -74,7 +74,7 @@ fn retired_pages_show_direct_and_terminal_replacements() {
         .as_array_mut()
         .unwrap_or_else(|| panic!("fixture diagnostics must be an array"))
         .retain(|diagnostic| diagnostic["code"] == "DSP-1010");
-    artifact["problem_sets"] = serde_json::json!({});
+    artifact["problem_sets"] = serde_json::json!({"createJob": []});
     write_json(&current, &artifact);
 
     assert_success(&run(&[
@@ -118,7 +118,8 @@ fn write_json(path: &Path, value: &serde_json::Value) {
 fn assert_success(output: &Output) {
     assert!(
         output.status.success(),
-        "{}",
+        "stdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
 }
