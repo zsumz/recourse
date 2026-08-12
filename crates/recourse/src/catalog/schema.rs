@@ -2,6 +2,7 @@
 
 mod compile;
 mod format;
+mod instance;
 mod resource;
 mod traversal;
 
@@ -65,6 +66,7 @@ pub(crate) fn normalize<E: PublicEvidence>() -> Result<Value, SchemaViolation> {
     visit_schema(&mut schema, "$", true, &mut references)?;
     resource::validate(&schema)?;
     validate_references(&schema, references)?;
+    instance::validate_depth(&schema)?;
     build_validator(&schema)?;
     schema.sort_all_objects();
     Ok(schema)
@@ -76,6 +78,7 @@ pub(crate) fn validate_artifact(schema: &mut Value) -> Result<(), SchemaViolatio
     visit_schema(schema, "$", true, &mut references)?;
     resource::validate(schema)?;
     validate_references(schema, references)?;
+    instance::validate_depth(schema)?;
     build_validator(schema)?;
     schema.sort_all_objects();
     Ok(())
@@ -122,6 +125,7 @@ fn validate_shape(
     if object.get("const").is_some_and(Value::is_object) {
         return fail(path, "object constants are outside the Recourse profile");
     }
+    instance::validate_local(object, path)?;
     Ok(())
 }
 

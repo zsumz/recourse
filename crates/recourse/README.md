@@ -86,7 +86,9 @@ representation bounds. Platform-sized and 128-bit integer formats are rejected
 because the protocol's intermediate JSON representation cannot guarantee their
 portable, lossless encoding. The exact vocabularies are exposed as
 `catalog::SUPPORTED_SCHEMA_FORMATS` and
-`catalog::SUPPORTED_SCHEMA_NUMERIC_FORMATS`.
+`catalog::SUPPORTED_SCHEMA_NUMERIC_FORMATS`. Catalog construction also rejects
+declared minimum sizes, required members, fixed values, and provably mandatory
+nesting that cannot fit the default diagnostic wire profile.
 
 See the [repository](https://github.com/zsumz/recourse) for the Dispatch
 reference implementation, executable conformance fixtures, and the canonical
