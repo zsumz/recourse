@@ -10,7 +10,10 @@ mod received_operation;
 mod terminal;
 mod typed;
 
-pub use classification::{Classification, KnownProblemClassification, ProblemClassification};
+pub use classification::{
+    Classification, HealthClassification, KnownHealthClassification, KnownOperationClassification,
+    KnownProblemClassification, OperationClassification, ProblemClassification,
+};
 pub use decode::{DecodeError, DecodeLimit, DecodeLimits};
 pub(crate) use decode::{decode_embedded_object, decode_object};
 pub use issue::ProtocolIssue;

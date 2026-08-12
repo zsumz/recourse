@@ -106,7 +106,10 @@ impl ReceivedHealthFinding {
 }
 
 impl<C: CatalogSpec> Catalog<C> {
-    /// Classifies a received finding against registered health surfaces.
+    /// Looks up a received finding by code on the health surface.
+    ///
+    /// Use [`Catalog::classify_health_conformance`] when identity and required
+    /// envelope-member findings are needed.
     pub fn classify_health<'a>(&'a self, received: &ReceivedHealthFinding) -> Classification<'a> {
         let definition = received.code().and_then(|code| self.diagnostic(code));
         definition

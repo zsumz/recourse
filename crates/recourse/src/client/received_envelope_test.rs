@@ -11,7 +11,8 @@ use crate::{
 };
 
 use super::{
-    Classification, DecodeLimits, ProtocolIssue, ReceivedHealthFinding, ReceivedOperationDiagnostic,
+    Classification, DecodeLimits, HealthClassification, OperationClassification, ProtocolIssue,
+    ReceivedHealthFinding, ReceivedOperationDiagnostic,
 };
 
 enum TestCatalog {}
@@ -137,5 +138,103 @@ fn malformed_surface_members_are_nonfatal_issues() {
             ProtocolIssue::InvalidHealthSeverity,
             ProtocolIssue::InvalidObservationTime
         ]
+    );
+}
+
+#[test]
+fn operation_classification_reports_identity_and_envelope_conformance() {
+    let catalog = Catalog::<TestCatalog>::builder()
+        .operation::<SharedDiagnostic>()
+        .build()
+        .unwrap_or_else(|error| panic!("operation catalog must build: {error}"));
+    let conformant = ReceivedOperationDiagnostic::from_slice(
+        br#"{"id":"dia_01KTEST","type":"https://received.invalid/problems/REN-9","code":"REN-9","title":"Shared diagnostic","detail":"Shared across non-HTTP surfaces.","evidence":{},"impact":{"unchanged":true},"suggestions":[]}"#,
+        DecodeLimits::default(),
+    )
+    .unwrap_or_else(|error| panic!("conformant operation must decode: {error}"));
+    let OperationClassification::Known(known) = catalog.classify_operation_conformance(&conformant)
+    else {
+        panic!("registered operation code must classify as known");
+    };
+    assert!(known.is_conformant());
+
+    let spoofed = ReceivedOperationDiagnostic::from_slice(
+        br#"{"id":"dia_01KTEST","type":"https://attacker.invalid/REN-9","code":"REN-9","title":"Shared diagnostic","detail":"Shared across non-HTTP surfaces.","evidence":{},"suggestions":[]}"#,
+        DecodeLimits::default(),
+    )
+    .unwrap_or_else(|error| panic!("spoofed operation must decode tolerantly: {error}"));
+    let OperationClassification::Known(known) = catalog.classify_operation_conformance(&spoofed)
+    else {
+        panic!("known code with identity issues must remain known");
+    };
+    assert_eq!(
+        known.catalog_issues(),
+        [
+            ProtocolIssue::UnexpectedTypeForCode {
+                expected: "https://received.invalid/problems/REN-9".to_owned(),
+                received: Some("https://attacker.invalid/REN-9".to_owned()),
+            },
+            ProtocolIssue::MissingRequiredMember { member: "impact" },
+        ]
+    );
+}
+
+#[test]
+fn health_classification_reports_identity_and_envelope_conformance() {
+    let catalog = Catalog::<TestCatalog>::builder()
+        .health::<SharedDiagnostic>()
+        .build()
+        .unwrap_or_else(|error| panic!("health catalog must build: {error}"));
+    let conformant = ReceivedHealthFinding::from_slice(
+        br#"{"id":"finding_01KTEST","type":"https://received.invalid/problems/REN-9","code":"REN-9","title":"Shared diagnostic","detail":"Shared across non-HTTP surfaces.","severity":"unhealthy","observed_at":"2026-08-10T14:31:00Z","evidence":{},"suggestions":[]}"#,
+        DecodeLimits::default(),
+    )
+    .unwrap_or_else(|error| panic!("conformant health finding must decode: {error}"));
+    let HealthClassification::Known(known) = catalog.classify_health_conformance(&conformant)
+    else {
+        panic!("registered health code must classify as known");
+    };
+    assert!(known.is_conformant());
+
+    let missing = ReceivedHealthFinding::from_slice(
+        br#"{"id":"finding_01KTEST","code":"REN-9","severity":"unhealthy","observed_at":"2026-08-10T14:31:00Z","evidence":{},"suggestions":[]}"#,
+        DecodeLimits::default(),
+    )
+    .unwrap_or_else(|error| panic!("incomplete health finding must decode tolerantly: {error}"));
+    let HealthClassification::Known(known) = catalog.classify_health_conformance(&missing) else {
+        panic!("known code with missing members must remain known");
+    };
+    assert_eq!(
+        known.catalog_issues(),
+        [
+            ProtocolIssue::UnexpectedTypeForCode {
+                expected: "https://received.invalid/problems/REN-9".to_owned(),
+                received: None,
+            },
+            ProtocolIssue::MissingRequiredMember { member: "title" },
+            ProtocolIssue::MissingRequiredMember { member: "detail" },
+        ]
+    );
+}
+
+#[test]
+fn known_code_reports_wrong_surface_registration() {
+    let catalog = Catalog::<TestCatalog>::builder()
+        .health::<SharedDiagnostic>()
+        .build()
+        .unwrap_or_else(|error| panic!("health-only catalog must build: {error}"));
+    let received = ReceivedOperationDiagnostic::from_slice(
+        br#"{"type":"https://received.invalid/problems/REN-9","code":"REN-9"}"#,
+        DecodeLimits::default(),
+    )
+    .unwrap_or_else(|error| panic!("operation must decode tolerantly: {error}"));
+    let OperationClassification::Known(known) = catalog.classify_operation_conformance(&received)
+    else {
+        panic!("known code must remain classified");
+    };
+    assert!(
+        known
+            .catalog_issues()
+            .contains(&ProtocolIssue::CodeNotRegisteredForOperation)
     );
 }

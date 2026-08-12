@@ -53,4 +53,13 @@ pub enum ProtocolIssue {
         /// Human-readable expected JSON shape.
         expected: &'static str,
     },
+    /// A strict envelope member was absent from a known diagnostic.
+    MissingRequiredMember {
+        /// Canonical JSON member name.
+        member: &'static str,
+    },
+    /// Known diagnostic code is not registered for the operation surface.
+    CodeNotRegisteredForOperation,
+    /// Known diagnostic code is not registered for the health surface.
+    CodeNotRegisteredForHealth,
 }

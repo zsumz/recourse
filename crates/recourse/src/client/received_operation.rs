@@ -97,7 +97,10 @@ impl ReceivedOperationDiagnostic {
 }
 
 impl<C: CatalogSpec> Catalog<C> {
-    /// Classifies a received diagnostic against registered operation surfaces.
+    /// Looks up a received diagnostic by code on the operation surface.
+    ///
+    /// Use [`Catalog::classify_operation_conformance`] when identity and
+    /// required envelope-member findings are needed.
     pub fn classify_operation<'a>(
         &'a self,
         received: &ReceivedOperationDiagnostic,

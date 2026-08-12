@@ -1,10 +1,17 @@
 //! Catalog-aware classification with explicit HTTP conformance findings.
 
+mod health;
+mod operation;
+
 use http::StatusCode;
+use serde_json::{Map, Value};
 
 use crate::catalog::{Catalog, CatalogDiagnostic, CatalogSpec};
 
 use super::{ProtocolIssue, ReceivedProblem};
+
+pub use health::{HealthClassification, KnownHealthClassification};
+pub use operation::{KnownOperationClassification, OperationClassification};
 
 /// Classification against one explicitly built local catalog.
 #[derive(Debug, Clone, Copy)]
@@ -14,6 +21,36 @@ pub enum Classification<'a> {
     Known(&'a CatalogDiagnostic),
     /// Code is absent, malformed, or newer than the local catalog.
     Unknown,
+}
+
+fn envelope_issues(
+    diagnostic: &CatalogDiagnostic,
+    type_uri: Option<&str>,
+    raw: &Map<String, Value>,
+    contract: EnvelopeContract,
+) -> Vec<ProtocolIssue> {
+    let mut issues = Vec::new();
+    if type_uri != Some(diagnostic.type_uri()) {
+        issues.push(ProtocolIssue::UnexpectedTypeForCode {
+            expected: diagnostic.type_uri().to_owned(),
+            received: type_uri.map(str::to_owned),
+        });
+    }
+    if !contract.registered {
+        issues.push(contract.surface_issue);
+    }
+    for member in contract.required {
+        if !raw.contains_key(*member) {
+            issues.push(ProtocolIssue::MissingRequiredMember { member });
+        }
+    }
+    issues
+}
+
+struct EnvelopeContract {
+    registered: bool,
+    surface_issue: ProtocolIssue,
+    required: &'static [&'static str],
 }
 
 /// HTTP Problem classification with catalog-aware conformance findings.
