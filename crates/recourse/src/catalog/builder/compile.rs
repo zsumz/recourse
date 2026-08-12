@@ -7,6 +7,7 @@ use crate::catalog::{
     artifact::{DiagnosticArtifactParts, HealthSurface, HttpSurface, OperationSurface},
     valid_type_uri,
 };
+use crate::wire::WireLimits;
 
 use super::{registration::Registration, validation::ValidatedNamespace};
 
@@ -32,6 +33,14 @@ fn compile_diagnostic(
         issues.push(CatalogIssue::InvalidTypeUri {
             number: registration.number,
             value: type_uri,
+        });
+        return None;
+    }
+    if type_uri.len() > WireLimits::DEFAULT_MAX_STRING_BYTES {
+        issues.push(CatalogIssue::TypeUriTooLong {
+            number: registration.number,
+            maximum: WireLimits::DEFAULT_MAX_STRING_BYTES,
+            actual: type_uri.len(),
         });
         return None;
     }

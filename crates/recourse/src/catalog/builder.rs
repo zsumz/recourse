@@ -1,5 +1,6 @@
 //! Explicit catalog registration and aggregated construction validation.
 
+mod closure;
 mod compile;
 mod problem_set;
 mod registration;
@@ -209,8 +210,11 @@ impl<C: CatalogSpec> CatalogBuilder<C> {
         let Some(namespace) = namespace else {
             return Err(CatalogBuildError::new(Vec::new()));
         };
+        let artifact = CatalogArtifact::new(namespace.identity, diagnostics, problem_sets);
+        let artifact =
+            closure::validate(&artifact).map_err(|issue| CatalogBuildError::new(vec![issue]))?;
         Ok(Catalog {
-            artifact: CatalogArtifact::new(namespace.identity, diagnostics, problem_sets),
+            artifact,
             problems,
             operations,
             health,

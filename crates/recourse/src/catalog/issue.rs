@@ -1,6 +1,6 @@
 //! Aggregated catalog definition failures with precise ownership context.
 
-use std::fmt::{self, Display, Formatter};
+mod display;
 
 use super::CodeNumber;
 
@@ -102,122 +102,18 @@ pub enum CatalogIssue {
         /// Missing HTTP diagnostic number.
         number: CodeNumber,
     },
-}
-
-impl Display for CatalogIssue {
-    fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::InvalidName { value } => write!(formatter, "invalid catalog name {value:?}"),
-            Self::InvalidPrefix { value } => write!(formatter, "invalid catalog prefix {value:?}"),
-            Self::InvalidTypeBase { value } => write!(formatter, "invalid type base {value:?}"),
-            Self::InvalidMetadata {
-                number,
-                field,
-                reason,
-            } => invalid_metadata(formatter, *number, field, reason),
-            Self::UnsupportedEvidenceSchema {
-                number,
-                path,
-                reason,
-            } => unsupported_schema(formatter, *number, "evidence", path, reason),
-            Self::UnsupportedImpactSchema {
-                number,
-                path,
-                reason,
-            } => unsupported_schema(formatter, *number, "impact", path, reason),
-            Self::DuplicateNumber { number } => duplicate_number(formatter, *number),
-            Self::InvalidHttpStatus { number, status } => {
-                invalid_http_status(formatter, *number, *status)
-            }
-            Self::MissingMandatoryHeader {
-                number,
-                status,
-                header,
-            } => missing_mandatory_header(formatter, *number, *status, header),
-            Self::InvalidTypeUri { number, value } => {
-                write!(
-                    formatter,
-                    "diagnostic {number} derives invalid type URI {value:?}"
-                )
-            }
-            Self::InvalidProblemSetId { value } => {
-                write!(formatter, "invalid problem-set operation ID {value:?}")
-            }
-            Self::DuplicateProblemSetId { id } => {
-                write!(
-                    formatter,
-                    "problem-set operation ID {id:?} is declared twice"
-                )
-            }
-            Self::DuplicateProblemSetMember {
-                problem_set,
-                number,
-            } => write!(
-                formatter,
-                "problem set {problem_set:?} includes diagnostic {number} twice"
-            ),
-            Self::UnregisteredProblemSetMember {
-                problem_set,
-                number,
-            } => write!(
-                formatter,
-                "problem set {problem_set:?} includes unregistered HTTP diagnostic {number}"
-            ),
-        }
-    }
-}
-
-fn invalid_metadata(
-    formatter: &mut Formatter<'_>,
-    number: CodeNumber,
-    field: &str,
-    reason: &str,
-) -> fmt::Result {
-    write!(
-        formatter,
-        "diagnostic {number} has invalid {field}: {reason}"
-    )
-}
-
-fn invalid_http_status(
-    formatter: &mut Formatter<'_>,
-    number: CodeNumber,
-    status: u16,
-) -> fmt::Result {
-    write!(
-        formatter,
-        "diagnostic {number} has invalid HTTP status {status}"
-    )
-}
-
-fn missing_mandatory_header(
-    formatter: &mut Formatter<'_>,
-    number: CodeNumber,
-    status: u16,
-    header: &str,
-) -> fmt::Result {
-    write!(
-        formatter,
-        "diagnostic {number} status {status} requires header {header}"
-    )
-}
-
-fn duplicate_number(formatter: &mut Formatter<'_>, number: CodeNumber) -> fmt::Result {
-    write!(
-        formatter,
-        "diagnostic number {number} is declared more than once"
-    )
-}
-
-fn unsupported_schema(
-    formatter: &mut Formatter<'_>,
-    number: CodeNumber,
-    surface: &str,
-    path: &str,
-    reason: &str,
-) -> fmt::Result {
-    write!(
-        formatter,
-        "diagnostic {number} has unsupported {surface} schema at {path}: {reason}"
-    )
+    /// A derived type URI exceeds the default diagnostic wire profile.
+    TypeUriTooLong {
+        /// Diagnostic number whose URI is too large.
+        number: CodeNumber,
+        /// Maximum accepted UTF-8 byte length.
+        maximum: usize,
+        /// Actual UTF-8 byte length.
+        actual: usize,
+    },
+    /// Recourse could not encode and reparse its generated artifact exactly.
+    InvalidGeneratedArtifact {
+        /// Actionable closure failure.
+        reason: String,
+    },
 }

@@ -42,6 +42,8 @@ mod artifact_parse_test;
 #[cfg(test)]
 mod artifact_test;
 #[cfg(test)]
+mod builder_limit_test;
+#[cfg(test)]
 mod builder_test;
 #[cfg(test)]
 mod code_test;

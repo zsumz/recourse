@@ -1,8 +1,10 @@
 //! Deterministic serializable catalog snapshot.
 
+pub(crate) mod limits;
 mod parse;
 mod parts;
 mod surface;
+mod write;
 
 use std::{
     collections::BTreeMap,
@@ -15,6 +17,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::{Code, CodeNumber};
+pub(crate) use limits::artifact_limits;
 pub(crate) use parts::DiagnosticArtifactParts;
 pub(crate) use surface::{DiagnosticSurfaces, HealthSurface, HttpSurface, OperationSurface};
 
@@ -80,10 +83,10 @@ impl CatalogArtifact {
         parse::parse_artifact(body)
     }
 
-    /// Writes canonical pretty JSON followed by one newline.
+    /// Writes bounded canonical pretty JSON followed by one newline.
     pub fn write_pretty<W: Write>(&self, mut writer: W) -> Result<(), ArtifactWriteError> {
-        serde_json::to_writer_pretty(&mut writer, self).map_err(ArtifactWriteError::Serialize)?;
-        writer.write_all(b"\n").map_err(ArtifactWriteError::Write)
+        let body = write::pretty(self)?;
+        writer.write_all(&body).map_err(ArtifactWriteError::Write)
     }
 }
 
@@ -196,8 +199,13 @@ impl CatalogDiagnostic {
 pub enum ArtifactWriteError {
     /// JSON serialization failed.
     Serialize(serde_json::Error),
-    /// The destination rejected the trailing newline.
+    /// The destination rejected the complete bounded output.
     Write(io::Error),
+    /// Canonical output exceeded the catalog artifact body limit.
+    TooLarge {
+        /// Maximum accepted artifact size in bytes.
+        maximum: usize,
+    },
 }
 
 impl Display for ArtifactWriteError {
@@ -205,6 +213,9 @@ impl Display for ArtifactWriteError {
         match self {
             Self::Serialize(error) => write!(formatter, "serialize catalog artifact: {error}"),
             Self::Write(error) => write!(formatter, "write catalog artifact: {error}"),
+            Self::TooLarge { maximum } => {
+                write!(formatter, "catalog artifact exceeds {maximum} bytes")
+            }
         }
     }
 }
@@ -214,6 +225,7 @@ impl Error for ArtifactWriteError {
         match self {
             Self::Serialize(error) => Some(error),
             Self::Write(error) => Some(error),
+            Self::TooLarge { .. } => None,
         }
     }
 }

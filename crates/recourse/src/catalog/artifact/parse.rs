@@ -7,21 +7,16 @@ use std::{collections::BTreeSet, fmt::Display};
 
 use serde_json::Value;
 
-use crate::{client::DecodeLimits, client::decode_object};
+use crate::client::decode_object;
+use crate::wire::WireLimits;
 
-use super::{CatalogArtifact, CatalogDiagnostic, MAX_CATALOG_ARTIFACT_BYTES};
+use super::{CatalogArtifact, CatalogDiagnostic, artifact_limits};
 use crate::catalog::{Code, CodeNumber, schema, valid_problem_set_id, valid_type_base};
 
 pub use error::ArtifactParseError;
 
 pub(super) fn parse_artifact(body: &[u8]) -> Result<CatalogArtifact, ArtifactParseError> {
-    let limits = DecodeLimits::default()
-        .with_max_body_bytes(MAX_CATALOG_ARTIFACT_BYTES)
-        .with_max_nesting_depth(64)
-        .with_max_object_properties(16_384)
-        .with_max_array_items(16_384)
-        .with_max_string_bytes(512 * 1024);
-    let object = decode_object(body, limits).map_err(ArtifactParseError::Decode)?;
+    let object = decode_object(body, artifact_limits()).map_err(ArtifactParseError::Decode)?;
     let artifact =
         serde_json::from_value(Value::Object(object)).map_err(ArtifactParseError::Structure)?;
     validate(&artifact)?;
@@ -92,6 +87,12 @@ fn validate_diagnostic(
         return invalid(
             &format!("{path}.type"),
             "must be derived from code and type base",
+        );
+    }
+    if diagnostic.type_uri.len() > WireLimits::DEFAULT_MAX_STRING_BYTES {
+        return invalid(
+            &format!("{path}.type"),
+            "exceeds the default diagnostic wire string limit",
         );
     }
     if let Some(violation) = crate::catalog::metadata::validate(

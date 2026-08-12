@@ -1,5 +1,6 @@
 //! Deterministic evidence-schema normalization and conservative validation.
 
+mod resource;
 mod traversal;
 
 use std::fmt::Display;
@@ -59,6 +60,7 @@ pub(crate) fn normalize<E: PublicEvidence>() -> Result<Value, SchemaViolation> {
     validate_draft(&schema)?;
     let mut references = Vec::new();
     visit_schema(&mut schema, "$", true, &mut references)?;
+    resource::validate(&schema)?;
     validate_references(&schema, references)?;
     compile(&schema)?;
     Ok(schema)
@@ -69,6 +71,7 @@ pub(crate) fn validate_artifact(schema: &Value) -> Result<(), SchemaViolation> {
     let mut schema = schema.clone();
     let mut references = Vec::new();
     visit_schema(&mut schema, "$", true, &mut references)?;
+    resource::validate(&schema)?;
     validate_references(&schema, references)?;
     compile(&schema)
 }
