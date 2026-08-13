@@ -11,3 +11,6 @@ pub(crate) use validation::{
     validate_embedded, validate_evidence, validate_value, validate_wire_parts,
 };
 pub(crate) use writer::{BoundedJsonError, to_bounded_vec};
+
+#[cfg(test)]
+mod error_test;
