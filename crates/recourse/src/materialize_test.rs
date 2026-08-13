@@ -66,6 +66,16 @@ struct FloatValue<T> {
     value: T,
 }
 
+#[derive(Serialize)]
+struct JsonNumberEvidence {
+    value: serde_json::Number,
+}
+
+#[derive(Serialize)]
+struct JsonValueEvidence {
+    value: serde_json::Value,
+}
+
 #[test]
 fn duplicate_members_are_rejected_instead_of_collapsed() {
     let error = object(&DuplicateMembers, WireLimits::default())
@@ -108,6 +118,27 @@ fn numbers_that_serde_json_would_rewrite_fail_before_materialization() {
         object(
             &FloatValue {
                 value: Some(f64::INFINITY),
+            },
+            WireLimits::default(),
+        ),
+    ] {
+        assert!(matches!(result, Err(MaterializeError::Json(_))));
+    }
+}
+
+#[test]
+fn serde_json_numeric_tokens_are_outside_public_evidence() {
+    let number = serde_json::Number::from(42);
+    for result in [
+        object(
+            &JsonNumberEvidence {
+                value: number.clone(),
+            },
+            WireLimits::default(),
+        ),
+        object(
+            &JsonValueEvidence {
+                value: number.into(),
             },
             WireLimits::default(),
         ),

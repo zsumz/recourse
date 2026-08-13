@@ -23,6 +23,10 @@ use serde::{
 /// [`SUPPORTED_SCHEMA_FORMATS`](crate::catalog::SUPPORTED_SCHEMA_FORMATS).
 /// Schemars numeric formats are retained only on number/integer schemas; JSON
 /// type and range constraints enforce their values.
+/// Numeric evidence must serialize through Rust's primitive integer or finite
+/// float methods. [`serde_json::Number`] and numeric [`serde_json::Value`]
+/// variants are intentionally unsupported because they use serializer-private
+/// raw-number tokens outside this governed boundary.
 ///
 /// Private reports cannot cross this boundary:
 ///

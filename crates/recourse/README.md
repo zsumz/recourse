@@ -84,8 +84,11 @@ assertions and rejects unknown formats during catalog construction. Fixed-width
 numeric formats require their exact JSON type and receive complete
 representation bounds. Platform-sized and 128-bit integer formats are rejected
 because the protocol's intermediate JSON representation cannot guarantee their
-portable, lossless encoding. The exact vocabularies are exposed as
-`catalog::SUPPORTED_SCHEMA_FORMATS` and
+portable, lossless encoding. Runtime numeric evidence must use Rust primitive
+integers or finite floats. `serde_json::Number` and numeric `serde_json::Value`
+variants are intentionally unsupported because their serializer-private raw
+tokens bypass that governed emitter domain. The exact vocabularies are exposed
+as `catalog::SUPPORTED_SCHEMA_FORMATS` and
 `catalog::SUPPORTED_SCHEMA_NUMERIC_FORMATS`. Catalog construction also rejects
 declared minimum sizes, required members, fixed values, and provably mandatory
 nesting that cannot fit the default diagnostic wire profile.
