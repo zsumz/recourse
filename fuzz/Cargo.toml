@@ -22,6 +22,13 @@ doc = false
 bench = false
 
 [[bin]]
+name = "json_parser"
+path = "fuzz_targets/json_parser.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "terminal_escape"
 path = "fuzz_targets/terminal_escape.rs"
 test = false

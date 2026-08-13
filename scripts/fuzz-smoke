@@ -8,6 +8,7 @@ fuzz_toolchain=nightly-2026-08-01
 cargo +"$fuzz_toolchain" fetch --manifest-path fuzz/Cargo.toml --locked
 cargo +"$fuzz_toolchain" clippy --manifest-path fuzz/Cargo.toml --all-targets --locked -- -D warnings
 for target in \
+  json_parser \
   received_problem \
   received_operation \
   received_health \

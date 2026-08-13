@@ -8,6 +8,7 @@ fuzz_toolchain=nightly-2026-08-01
 seconds_per_target=${FUZZ_SECONDS_PER_TARGET:-60}
 
 for target in \
+  json_parser \
   received_problem \
   received_operation \
   received_health \

@@ -144,6 +144,7 @@ fn scheduled_fuzzing_uses_pinned_tools_and_the_full_target_set() {
         );
     }
     for target in [
+        "json_parser",
         "received_problem",
         "received_operation",
         "received_health",
