@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 
 use serde_json::{Number, Value};
 
-use super::{SchemaViolation, compare, validate_token};
+use super::{SchemaViolation, compare, has_primitive_integer_emitter, validate_token};
 
 pub(crate) fn value_is_public(value: &Value, path: &str) -> Result<bool, SchemaViolation> {
     match value {
@@ -29,7 +29,7 @@ fn values_are_public<'a>(
 
 pub(crate) fn is_public(number: &Number, path: &str) -> Result<bool, SchemaViolation> {
     validate_token(number, path)?;
-    if number.as_i64().is_some() || number.as_u64().is_some() {
+    if has_primitive_integer_emitter(number, path)? {
         return Ok(true);
     }
     if emitted_float_matches::<f32>(number, path)? {

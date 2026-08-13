@@ -118,6 +118,19 @@ pub(super) fn is_integer(number: &Number, path: &str) -> Result<bool, SchemaViol
     Ok(ExactNumber::parse(number, path)?.is_integer())
 }
 
+pub(super) fn has_primitive_integer_emitter(
+    number: &Number,
+    path: &str,
+) -> Result<bool, SchemaViolation> {
+    let value = ExactNumber::parse(number, path)?;
+    if !value.is_integer() {
+        return Ok(false);
+    }
+    let minimum = ExactNumber::parse(&Number::from(i64::MIN), path)?;
+    let maximum = ExactNumber::parse(&Number::from(u64::MAX), path)?;
+    Ok(value.compare(&minimum) != Ordering::Less && value.compare(&maximum) != Ordering::Greater)
+}
+
 pub(super) fn is_positive(number: &Number, path: &str) -> Result<bool, SchemaViolation> {
     let zero = Number::from(0_u8);
     Ok(compare(number, &zero, path)? == Ordering::Greater)

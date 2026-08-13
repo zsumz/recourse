@@ -1,5 +1,4 @@
 //! Permanent catalog identity and namespace declarations.
-
 mod artifact;
 mod build_error;
 mod builder;
@@ -39,7 +38,6 @@ pub(crate) use type_uri::{
     maximum_type_uri_bytes, type_namespace_fits_wire, valid_type_base, valid_type_uri,
 };
 pub(crate) use validator::{DiagnosticValidators, validate as validate_value};
-
 #[cfg(test)]
 mod artifact_parse_test;
 #[cfg(test)]
@@ -60,6 +58,8 @@ mod compatibility_profile_test;
 mod compatibility_schema_test;
 #[cfg(test)]
 mod compatibility_test;
+#[cfg(test)]
+mod integer_emission_test;
 #[cfg(test)]
 mod lock_problem_set_test;
 #[cfg(test)]
