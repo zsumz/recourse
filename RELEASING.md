@@ -25,10 +25,10 @@ API snapshot expected by source-SemVer CI. The target is the reviewed API
 commit, not the moving branch head:
 
 ```sh
-git tag -s api/v0.0.1-rc.2 ed742880b9edd7b692b5dfb585c07c5ceeb7fd43 \
+git tag -s api/v0.0.1-rc.2 79458399d2dcf00972817cc2db490c85e6d7861f \
   -m "recourse api v0.0.1-rc.2"
 test "$(git rev-parse 'api/v0.0.1-rc.2^{commit}')" = \
-  ed742880b9edd7b692b5dfb585c07c5ceeb7fd43
+  79458399d2dcf00972817cc2db490c85e6d7861f
 git push origin api/v0.0.1-rc.2
 ```
 

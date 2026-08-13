@@ -103,7 +103,7 @@ fn latest_stable_lane_complements_the_msrv_gate() {
 fn source_semver_gate_checks_the_frozen_rc_api() {
     let workflow = read(&workspace_root().join(".github/workflows/ci.yml"));
     let baseline_tag = "api/v0.0.1-rc.2";
-    let baseline_commit = "ed742880b9edd7b692b5dfb585c07c5ceeb7fd43";
+    let baseline_commit = "79458399d2dcf00972817cc2db490c85e6d7861f";
 
     for required in [
         "source-semver:",

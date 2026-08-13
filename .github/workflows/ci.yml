@@ -101,7 +101,7 @@ jobs:
         run: |
           test "$(git cat-file -t refs/tags/api/v0.0.1-rc.2)" = tag
           test "$(git rev-parse 'api/v0.0.1-rc.2^{commit}')" = \
-            ed742880b9edd7b692b5dfb585c07c5ceeb7fd43
+            79458399d2dcf00972817cc2db490c85e6d7861f
       - run: >-
           cargo semver-checks --package recourse
           --baseline-rev api/v0.0.1-rc.2
