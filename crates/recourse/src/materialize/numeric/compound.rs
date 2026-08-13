@@ -83,7 +83,7 @@ impl<C: ser::SerializeMap> ser::SerializeMap for CheckedCompound<C> {
     }
 }
 
-impl<C: ser::SerializeStruct> ser::SerializeStruct for CheckedCompound<C> {
+impl<C: ser::SerializeMap> ser::SerializeStruct for CheckedCompound<C> {
     type Ok = C::Ok;
     type Error = C::Error;
 
@@ -92,7 +92,7 @@ impl<C: ser::SerializeStruct> ser::SerializeStruct for CheckedCompound<C> {
         key: &'static str,
         value: &T,
     ) -> Result<(), Self::Error> {
-        self.0.serialize_field(key, &Checked(value))
+        self.0.serialize_entry(key, &Checked(value))
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {

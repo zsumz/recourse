@@ -32,7 +32,7 @@ impl<S: Serializer> Serializer for CheckedSerializer<S> {
     type SerializeTupleStruct = CheckedCompound<S::SerializeTupleStruct>;
     type SerializeTupleVariant = CheckedCompound<S::SerializeTupleVariant>;
     type SerializeMap = CheckedCompound<S::SerializeMap>;
-    type SerializeStruct = CheckedCompound<S::SerializeStruct>;
+    type SerializeStruct = CheckedCompound<S::SerializeMap>;
     type SerializeStructVariant = CheckedCompound<S::SerializeStructVariant>;
 
     fn serialize_bool(self, value: bool) -> Result<Self::Ok, Self::Error> {
@@ -140,7 +140,7 @@ impl<S: Serializer> Serializer for CheckedSerializer<S> {
         value: &T,
     ) -> Result<Self::Ok, Self::Error> {
         token::reject::<S::Error>(name)?;
-        self.0.serialize_newtype_struct(name, &Checked(value))
+        Checked(value).serialize(self.0)
     }
 
     fn serialize_newtype_variant<T: ?Sized + Serialize>(
@@ -194,7 +194,7 @@ impl<S: Serializer> Serializer for CheckedSerializer<S> {
         length: usize,
     ) -> Result<Self::SerializeStruct, Self::Error> {
         token::reject::<S::Error>(name)?;
-        self.0.serialize_struct(name, length).map(CheckedCompound)
+        self.0.serialize_map(Some(length)).map(CheckedCompound)
     }
 
     fn serialize_struct_variant(

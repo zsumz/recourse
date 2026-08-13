@@ -114,3 +114,26 @@ fn raw_json_feature_consumers_must_fail_closed() {
         assert!(script.contains(required), "canonical gate omits {required}");
     }
 }
+
+#[test]
+fn checked_json_serialization_erases_plain_struct_names() {
+    let source = read(&workspace_root().join("crates/recourse/src/materialize/numeric.rs"));
+    for required in [
+        "Checked(value).serialize(self.0)",
+        "self.0.serialize_map(Some(length)).map(CheckedCompound)",
+    ] {
+        assert!(
+            source.contains(required),
+            "numeric boundary omits {required}"
+        );
+    }
+    for forbidden in [
+        "self.0.serialize_newtype_struct(name",
+        "self.0.serialize_struct(name",
+    ] {
+        assert!(
+            !source.contains(forbidden),
+            "numeric boundary delegates private semantics through {forbidden}"
+        );
+    }
+}
