@@ -2,7 +2,7 @@
 
 use serde_json::json;
 
-use super::{DecodeError, DecodeLimit, DecodeLimits, decode_object};
+use super::{DecodeError, DecodeLimit, DecodeLimits, decode_embedded_object, decode_object};
 
 #[test]
 fn defaults_match_the_reviewed_client_budget() {
@@ -109,6 +109,63 @@ fn every_tree_shape_budget_is_enforced() {
         DecodeLimits::default().with_max_string_bytes(3),
         DecodeLimit::StringBytes,
     );
+}
+
+#[test]
+fn numeric_tokens_have_an_independent_parse_budget() {
+    let limits = DecodeLimits::default().with_max_number_bytes(4);
+    assert!(matches!(
+        decode_object(br#"{"value":12345x}"#, limits),
+        Err(DecodeError::LimitExceeded {
+            limit: DecodeLimit::NumberBytes,
+            maximum: 4,
+            actual: 6,
+        })
+    ));
+}
+
+#[test]
+fn structural_limits_precede_invalid_descendant_construction() {
+    for (body, limits, expected) in [
+        (
+            br#"{"blocked":not-json}"#.as_slice(),
+            DecodeLimits::default().with_max_object_properties(0),
+            DecodeLimit::ObjectProperties,
+        ),
+        (
+            br#"{"items":[not-json]}"#.as_slice(),
+            DecodeLimits::default().with_max_array_items(0),
+            DecodeLimit::ArrayItems,
+        ),
+        (
+            br#"{"nested":{not-json}}"#.as_slice(),
+            DecodeLimits::default().with_max_nesting_depth(1),
+            DecodeLimit::NestingDepth,
+        ),
+        (
+            br#"{"long":not-json}"#.as_slice(),
+            DecodeLimits::default().with_max_string_bytes(3),
+            DecodeLimit::StringBytes,
+        ),
+    ] {
+        assert!(matches!(
+            decode_object(body, limits),
+            Err(DecodeError::LimitExceeded { limit, .. }) if limit == expected
+        ));
+    }
+}
+
+#[test]
+fn embedded_roots_reserve_their_enclosing_envelope_depth() {
+    let limits = DecodeLimits::default().with_max_nesting_depth(1);
+    assert!(decode_object(b"{}", limits).is_ok());
+    assert!(matches!(
+        decode_embedded_object(b"{}", limits),
+        Err(DecodeError::LimitExceeded {
+            limit: DecodeLimit::NestingDepth,
+            ..
+        })
+    ));
 }
 
 #[test]

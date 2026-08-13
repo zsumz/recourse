@@ -19,6 +19,8 @@ pub enum WireLimit {
     ArrayItems,
     /// UTF-8 bytes in one key or string.
     StringBytes,
+    /// Encoded bytes in one JSON number token.
+    NumberBytes,
     /// Items in the top-level suggestions array.
     Suggestions,
     /// Items in the validation violations array.

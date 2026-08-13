@@ -101,7 +101,12 @@ fn validate_subtree(value: &Value, limits: WireLimits, depth: usize) -> Result<(
             limits.max_string_bytes(),
             value.len(),
         )?,
-        Value::Null | Value::Bool(_) | Value::Number(_) => {}
+        Value::Number(number) => enforce(
+            WireLimit::NumberBytes,
+            limits.max_number_bytes(),
+            number.to_string().len(),
+        )?,
+        Value::Null | Value::Bool(_) => {}
     }
     Ok(())
 }

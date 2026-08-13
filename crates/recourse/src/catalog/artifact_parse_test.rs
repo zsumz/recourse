@@ -139,6 +139,17 @@ fn parser_rejects_unbounded_schema_numbers_without_panicking() {
 }
 
 #[test]
+fn parser_rejects_oversized_number_tokens_before_schema_validation() {
+    let mut artifact = encoded_value();
+    let exponent = "9".repeat(WireLimits::DEFAULT_MAX_NUMBER_BYTES);
+    artifact["diagnostics"][0]["evidence_schema"] = serde_json::from_str(&format!("1e{exponent}"))
+        .unwrap_or_else(|error| panic!("oversized numeric fixture must parse: {error}"));
+
+    let error = parse_value(&artifact).err();
+    assert!(error.is_some_and(|error| error.to_string().contains("NumberBytes")));
+}
+
+#[test]
 fn parser_rejects_exact_schema_bounds_beyond_the_wire_profile() {
     let mut artifact = encoded_value();
     artifact["diagnostics"][0]["evidence_schema"] = serde_json::from_str(

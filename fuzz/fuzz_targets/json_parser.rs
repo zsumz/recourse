@@ -29,6 +29,7 @@ fn decode(body: &[u8], size: usize) -> Result<ReceivedProblem, recourse::client:
         .with_max_object_properties(maximum)
         .with_max_array_items(maximum)
         .with_max_string_bytes(maximum)
+        .with_max_number_bytes(maximum)
         .with_max_suggestions(maximum)
         .with_max_violations(maximum);
     ReceivedProblem::from_slice(StatusCode::BAD_GATEWAY, &HeaderMap::new(), body, limits)

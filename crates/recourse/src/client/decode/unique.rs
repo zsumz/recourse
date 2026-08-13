@@ -3,24 +3,35 @@
 use serde::de::Error as _;
 use serde_json::{Map, Number, Value};
 
+use super::{DecodeError, DecodeLimit, DecodeLimits};
+
 const MAX_PARSER_NESTING_DEPTH: usize = 128;
 
-pub(super) fn parse(body: &[u8]) -> Result<Value, serde_json::Error> {
-    Parser::new(body).parse()
+pub(super) fn parse(
+    body: &[u8],
+    limits: DecodeLimits,
+    initial_depth: usize,
+) -> Result<Value, DecodeError> {
+    Parser::new(body, limits).parse(initial_depth)
 }
 
 struct Parser<'a> {
     body: &'a [u8],
     cursor: usize,
+    limits: DecodeLimits,
 }
 
 impl<'a> Parser<'a> {
-    const fn new(body: &'a [u8]) -> Self {
-        Self { body, cursor: 0 }
+    const fn new(body: &'a [u8], limits: DecodeLimits) -> Self {
+        Self {
+            body,
+            cursor: 0,
+            limits,
+        }
     }
 
-    fn parse(mut self) -> Result<Value, serde_json::Error> {
-        let value = self.value(0)?;
+    fn parse(mut self, initial_depth: usize) -> Result<Value, DecodeError> {
+        let value = self.value(initial_depth)?;
         self.whitespace();
         if self.cursor != self.body.len() {
             return self.fail("trailing characters after JSON value");
@@ -28,7 +39,7 @@ impl<'a> Parser<'a> {
         Ok(value)
     }
 
-    fn value(&mut self, depth: usize) -> Result<Value, serde_json::Error> {
+    fn value(&mut self, depth: usize) -> Result<Value, DecodeError> {
         self.whitespace();
         match self.peek() {
             Some(b'{') => self.object(depth),
@@ -43,8 +54,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn object(&mut self, depth: usize) -> Result<Value, serde_json::Error> {
-        Self::nested(depth)?;
+    fn object(&mut self, depth: usize) -> Result<Value, DecodeError> {
+        self.nested(depth)?;
         self.cursor += 1;
         self.whitespace();
         let mut object = Map::new();
@@ -52,6 +63,11 @@ impl<'a> Parser<'a> {
             return Ok(Value::Object(object));
         }
         loop {
+            Self::enforce(
+                DecodeLimit::ObjectProperties,
+                self.limits.max_object_properties(),
+                object.len() + 1,
+            )?;
             if self.peek() != Some(b'"') {
                 return self.fail("object member name must be a string");
             }
@@ -72,8 +88,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn array(&mut self, depth: usize) -> Result<Value, serde_json::Error> {
-        Self::nested(depth)?;
+    fn array(&mut self, depth: usize) -> Result<Value, DecodeError> {
+        self.nested(depth)?;
         self.cursor += 1;
         self.whitespace();
         let mut array = Vec::new();
@@ -81,6 +97,11 @@ impl<'a> Parser<'a> {
             return Ok(Value::Array(array));
         }
         loop {
+            Self::enforce(
+                DecodeLimit::ArrayItems,
+                self.limits.max_array_items(),
+                array.len() + 1,
+            )?;
             array.push(self.value(depth + 1)?);
             self.whitespace();
             if self.consume(b']') {
@@ -91,14 +112,21 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn string(&mut self) -> Result<String, serde_json::Error> {
+    fn string(&mut self) -> Result<String, DecodeError> {
         let start = self.cursor;
         self.cursor += 1;
         while let Some(byte) = self.peek() {
             match byte {
                 b'"' => {
                     self.cursor += 1;
-                    return serde_json::from_slice(&self.body[start..self.cursor]);
+                    let value: String = serde_json::from_slice(&self.body[start..self.cursor])
+                        .map_err(DecodeError::MalformedJson)?;
+                    Self::enforce(
+                        DecodeLimit::StringBytes,
+                        self.limits.max_string_bytes(),
+                        value.len(),
+                    )?;
+                    return Ok(value);
                 }
                 b'\\' => {
                     self.cursor += 1;
@@ -113,15 +141,22 @@ impl<'a> Parser<'a> {
         self.fail("unterminated JSON string")
     }
 
-    fn number(&mut self) -> Result<Value, serde_json::Error> {
+    fn number(&mut self) -> Result<Value, DecodeError> {
         let start = self.cursor;
         while self.peek().is_some_and(|byte| !is_value_delimiter(byte)) {
             self.cursor += 1;
         }
-        serde_json::from_slice::<Number>(&self.body[start..self.cursor]).map(Value::Number)
+        Self::enforce(
+            DecodeLimit::NumberBytes,
+            self.limits.max_number_bytes(),
+            self.cursor - start,
+        )?;
+        serde_json::from_slice::<Number>(&self.body[start..self.cursor])
+            .map(Value::Number)
+            .map_err(DecodeError::MalformedJson)
     }
 
-    fn literal(&mut self, token: &[u8], value: Value) -> Result<Value, serde_json::Error> {
+    fn literal(&mut self, token: &[u8], value: Value) -> Result<Value, DecodeError> {
         if self.body[self.cursor..].starts_with(token) {
             self.cursor += token.len();
             Ok(value)
@@ -130,9 +165,14 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn nested(depth: usize) -> Result<(), serde_json::Error> {
+    fn nested(&self, depth: usize) -> Result<(), DecodeError> {
+        Self::enforce(
+            DecodeLimit::NestingDepth,
+            self.limits.max_nesting_depth(),
+            depth + 1,
+        )?;
         if depth >= MAX_PARSER_NESTING_DEPTH {
-            Err(serde_json::Error::custom("JSON recursion limit exceeded"))
+            self.fail("JSON recursion limit exceeded")
         } else {
             Ok(())
         }
@@ -144,7 +184,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn require(&mut self, byte: u8, message: &str) -> Result<(), serde_json::Error> {
+    fn require(&mut self, byte: u8, message: &str) -> Result<(), DecodeError> {
         if self.consume(byte) {
             Ok(())
         } else {
@@ -165,10 +205,21 @@ impl<'a> Parser<'a> {
         self.body.get(self.cursor).copied()
     }
 
-    fn fail<T>(&self, message: &str) -> Result<T, serde_json::Error> {
-        Err(serde_json::Error::custom(format!(
-            "{message} at byte {}",
-            self.cursor
+    fn enforce(limit: DecodeLimit, maximum: usize, actual: usize) -> Result<(), DecodeError> {
+        if actual > maximum {
+            Err(DecodeError::LimitExceeded {
+                limit,
+                maximum,
+                actual,
+            })
+        } else {
+            Ok(())
+        }
+    }
+
+    fn fail<T>(&self, message: &str) -> Result<T, DecodeError> {
+        Err(DecodeError::MalformedJson(serde_json::Error::custom(
+            format!("{message} at byte {}", self.cursor),
         )))
     }
 }

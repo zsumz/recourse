@@ -8,6 +8,7 @@ pub struct WireLimits {
     object_properties: usize,
     array_items: usize,
     string_bytes: usize,
+    number_bytes: usize,
     suggestions: usize,
     violations: usize,
 }
@@ -23,6 +24,8 @@ impl WireLimits {
     pub const DEFAULT_MAX_ARRAY_ITEMS: usize = 128;
     /// Default maximum UTF-8 size for each key or string value.
     pub const DEFAULT_MAX_STRING_BYTES: usize = 8 * 1024;
+    /// Default maximum encoded size for each JSON number token.
+    pub const DEFAULT_MAX_NUMBER_BYTES: usize = 128;
     /// Default maximum top-level suggestion count.
     pub const DEFAULT_MAX_SUGGESTIONS: usize = 32;
     /// Default maximum validation violation count.
@@ -60,6 +63,13 @@ impl WireLimits {
     #[must_use]
     pub const fn with_max_string_bytes(mut self, maximum: usize) -> Self {
         self.string_bytes = maximum;
+        self
+    }
+
+    /// Replaces the encoded number-token byte budget.
+    #[must_use]
+    pub const fn with_max_number_bytes(mut self, maximum: usize) -> Self {
+        self.number_bytes = maximum;
         self
     }
 
@@ -102,6 +112,11 @@ impl WireLimits {
         self.string_bytes
     }
 
+    /// Maximum encoded bytes in each JSON number token.
+    pub const fn max_number_bytes(self) -> usize {
+        self.number_bytes
+    }
+
     /// Maximum top-level caller suggestions.
     pub const fn max_suggestions(self) -> usize {
         self.suggestions
@@ -121,6 +136,7 @@ impl Default for WireLimits {
             object_properties: Self::DEFAULT_MAX_OBJECT_PROPERTIES,
             array_items: Self::DEFAULT_MAX_ARRAY_ITEMS,
             string_bytes: Self::DEFAULT_MAX_STRING_BYTES,
+            number_bytes: Self::DEFAULT_MAX_NUMBER_BYTES,
             suggestions: Self::DEFAULT_MAX_SUGGESTIONS,
             violations: Self::DEFAULT_MAX_VIOLATIONS,
         }
