@@ -1,5 +1,12 @@
 //! Signed tags and published registry bytes are the only GitHub release input.
 
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::{Command, Output},
+    time::{SystemTime, UNIX_EPOCH},
+};
+
 use super::{
     repository::assert_external_actions_are_pinned,
     support::{read, workspace_root},
@@ -84,4 +91,103 @@ fn release_guide_reproduces_the_frozen_api_snapshot() {
     ] {
         assert!(guide.contains(required), "release guide omits {required:?}");
     }
+}
+
+#[test]
+fn git_tagger_identity_format_matches_the_release_contract() {
+    let repository = tagger_test_repository();
+    let identity = git(
+        &repository,
+        &[
+            "for-each-ref",
+            "--format=%(taggername) %(taggeremail)",
+            "refs/tags/test-release",
+        ],
+    );
+    assert_git_success(&identity, "read tagger identity");
+    assert_eq!(
+        String::from_utf8(identity.stdout)
+            .unwrap_or_else(|error| panic!("Git tagger identity should be UTF-8: {error}"))
+            .trim(),
+        "zsumz <shawn@zsumz.com>"
+    );
+
+    let verifier = read(&workspace_root().join("scripts/verify-release-tag"));
+    assert!(verifier.contains("--format='%(taggername) %(taggeremail)'"));
+    assert!(!verifier.contains("<%(taggeremail)>"));
+    fs::remove_dir_all(&repository)
+        .unwrap_or_else(|error| panic!("remove {}: {error}", repository.display()));
+}
+
+fn tagger_test_repository() -> PathBuf {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_else(|error| panic!("system time should follow the Unix epoch: {error}"))
+        .as_nanos();
+    let repository = std::env::temp_dir().join(format!(
+        "recourse-tagger-format-{}-{unique}",
+        std::process::id()
+    ));
+    fs::create_dir(&repository)
+        .unwrap_or_else(|error| panic!("create {}: {error}", repository.display()));
+
+    assert_git_success(
+        &git(&repository, &["init", "--quiet"]),
+        "initialize temporary repository",
+    );
+    assert_git_success(
+        &git(
+            &repository,
+            &[
+                "-c",
+                "commit.gpgSign=false",
+                "-c",
+                "user.name=zsumz",
+                "-c",
+                "user.email=shawn@zsumz.com",
+                "commit",
+                "--quiet",
+                "--allow-empty",
+                "-m",
+                "test: seed tag target",
+            ],
+        ),
+        "create tag target",
+    );
+    assert_git_success(
+        &git(
+            &repository,
+            &[
+                "-c",
+                "tag.gpgSign=false",
+                "-c",
+                "user.name=zsumz",
+                "-c",
+                "user.email=shawn@zsumz.com",
+                "tag",
+                "--annotate",
+                "test-release",
+                "-m",
+                "test release",
+            ],
+        ),
+        "create annotated tag",
+    );
+    repository
+}
+
+fn git(repository: &Path, arguments: &[&str]) -> Output {
+    Command::new("git")
+        .current_dir(repository)
+        .args(arguments)
+        .output()
+        .unwrap_or_else(|error| panic!("run Git in {}: {error}", repository.display()))
+}
+
+fn assert_git_success(output: &Output, operation: &str) {
+    assert!(
+        output.status.success(),
+        "{operation}: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 }

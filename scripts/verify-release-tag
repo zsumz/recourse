@@ -20,7 +20,7 @@ if [[ $(git cat-file -t "refs/tags/$tag") != tag ]]; then
   echo "$tag must be an annotated tag" >&2
   exit 1
 fi
-tagger=$(git for-each-ref --format='%(taggername) <%(taggeremail)>' "refs/tags/$tag")
+tagger=$(git for-each-ref --format='%(taggername) %(taggeremail)' "refs/tags/$tag")
 if [[ "$tagger" != "$expected_identity" ]]; then
   echo "$tag must be tagged by $expected_identity" >&2
   exit 1
