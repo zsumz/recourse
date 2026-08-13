@@ -62,6 +62,24 @@ pub(crate) fn values_equal(left: &Value, right: &Value) -> bool {
     }
 }
 
+pub(crate) fn unordered_values_equal(left: &[Value], right: &[Value]) -> bool {
+    if left.len() != right.len() {
+        return false;
+    }
+    let mut matched = vec![false; right.len()];
+    for left in left {
+        let Some(index) = right
+            .iter()
+            .enumerate()
+            .position(|(index, right)| !matched[index] && values_equal(left, right))
+        else {
+            return false;
+        };
+        matched[index] = true;
+    }
+    true
+}
+
 fn emitted_float_matches<T>(number: &Number, path: &str) -> Result<bool, SchemaViolation>
 where
     T: std::str::FromStr + serde::Serialize + Copy + Float,

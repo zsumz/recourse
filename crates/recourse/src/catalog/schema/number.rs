@@ -10,8 +10,8 @@ use serde_json::{Number, Value};
 use super::SchemaViolation;
 use crate::wire::WireLimits;
 
-pub(crate) use emission::values_equal;
 pub(crate) use emission::{is_public, value_is_public};
+pub(crate) use emission::{unordered_values_equal, values_equal};
 
 #[derive(Debug)]
 struct ExactNumber {

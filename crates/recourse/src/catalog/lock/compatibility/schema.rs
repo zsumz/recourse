@@ -150,15 +150,26 @@ fn compare_other_keywords(
         .filter(|key| !ignored.contains(&key.as_str()))
         .collect::<BTreeSet<_>>();
     for key in keys {
-        if !matches!((previous.get(key), current.get(key)),
-            (Some(previous), Some(current)) if number::values_equal(previous, current))
-        {
+        if !keyword_values_equal(key, previous.get(key), current.get(key)) {
             push(
                 changes,
                 ChangeInput::schema_changed(code, &format!("{path}.{key}")),
             );
         }
     }
+}
+
+fn keyword_values_equal(key: &str, previous: Option<&Value>, current: Option<&Value>) -> bool {
+    let (Some(previous), Some(current)) = (previous, current) else {
+        return false;
+    };
+    if key == "enum" {
+        return match (previous.as_array(), current.as_array()) {
+            (Some(previous), Some(current)) => number::unordered_values_equal(previous, current),
+            _ => false,
+        };
+    }
+    number::values_equal(previous, current)
 }
 
 fn object_keyword<'a>(object: &'a Map<String, Value>, key: &str) -> Option<&'a Map<String, Value>> {
