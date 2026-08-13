@@ -3,6 +3,7 @@
 mod compile;
 mod format;
 mod instance;
+pub(super) mod number;
 mod resource;
 mod traversal;
 

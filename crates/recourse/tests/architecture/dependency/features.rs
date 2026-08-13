@@ -69,6 +69,32 @@ fn serde_json_numeric_identity_features_are_owned_directly() {
 }
 
 #[test]
+fn schema_number_comparison_owns_arbitrary_precision_directly() {
+    let workspace = workspace_root();
+    let root = read(&workspace.join("Cargo.toml"))
+        .parse::<toml::Value>()
+        .unwrap_or_else(|error| panic!("parse workspace manifest: {error}"));
+    assert_eq!(
+        root["workspace"]["dependencies"]["num-bigint"]["default-features"].as_bool(),
+        Some(false)
+    );
+
+    for relative in [
+        "crates/recourse/src/catalog/schema/format.rs",
+        "crates/recourse/src/catalog/schema/instance.rs",
+        "crates/recourse/src/catalog/schema/instance/satisfiability.rs",
+    ] {
+        let source = read(&workspace.join(relative));
+        for primitive in [".as_u64()", ".as_i64()", ".as_f64()"] {
+            assert!(
+                !source.contains(primitive),
+                "{relative} discards an exact schema number through {primitive}"
+            );
+        }
+    }
+}
+
+#[test]
 fn preserve_order_consumers_must_match_default_canonical_bytes() {
     let workspace = workspace_root();
     let preserve = read(&workspace.join("conformance/canonical-json/preserve-order/Cargo.toml"))

@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Number, Value};
 
-use super::{SchemaViolation, fail};
+use super::{SchemaViolation, fail, number};
 
 /// JSON Schema formats enforced as assertions by the Recourse evidence profile.
 pub const SUPPORTED_SCHEMA_FORMATS: &[&str] = &[
@@ -146,29 +146,26 @@ fn apply_integer_bound(
     lower: bool,
     path: &str,
 ) -> Result<(), SchemaViolation> {
+    let boundary = integer_number(representation, path)?;
     let existing = schema.get(keyword).and_then(Value::as_number);
-    let effective = match existing {
-        Some(number) => number.as_i128().ok_or_else(|| SchemaViolation {
-            path: path.to_owned(),
-            reason: format!("{keyword} for an integer format must be an exact integer"),
-        })?,
-        None => representation,
-    };
-    if existing.is_none()
-        || (lower && effective < representation)
-        || (!lower && effective > representation)
+    if let Some(existing) = existing
+        && !number::is_integer(existing, path)?
     {
-        let number = match (i64::try_from(representation), u64::try_from(representation)) {
-            (Ok(signed), _) => Number::from(signed),
-            (_, Ok(unsigned)) => Number::from(unsigned),
-            _ => {
-                return fail(
-                    path,
-                    "supported integer format has an unrepresentable bound",
-                );
-            }
-        };
-        schema.insert(keyword.to_owned(), Value::Number(number));
+        return fail(
+            path,
+            &format!("{keyword} for an integer format must be an exact integer"),
+        );
+    }
+    let widening = match existing {
+        Some(existing) => match number::compare(existing, &boundary, path)? {
+            std::cmp::Ordering::Less => lower,
+            std::cmp::Ordering::Greater => !lower,
+            std::cmp::Ordering::Equal => false,
+        },
+        None => true,
+    };
+    if widening {
+        schema.insert(keyword.to_owned(), Value::Number(boundary));
     }
     Ok(())
 }
@@ -180,18 +177,31 @@ fn apply_number_bound(
     lower: bool,
     path: &str,
 ) -> Result<(), SchemaViolation> {
-    let effective = schema
-        .get(keyword)
-        .and_then(Value::as_f64)
-        .unwrap_or(representation);
-    if !schema.contains_key(keyword)
-        || (lower && effective < representation)
-        || (!lower && effective > representation)
-    {
-        let Some(number) = Number::from_f64(representation) else {
-            return fail(path, "supported number format has a non-finite bound");
-        };
-        schema.insert(keyword.to_owned(), Value::Number(number));
+    let Some(boundary) = Number::from_f64(representation) else {
+        return fail(path, "supported number format has a non-finite bound");
+    };
+    let existing = schema.get(keyword).and_then(Value::as_number);
+    let widening = match existing {
+        Some(existing) => match number::compare(existing, &boundary, path)? {
+            std::cmp::Ordering::Less => lower,
+            std::cmp::Ordering::Greater => !lower,
+            std::cmp::Ordering::Equal => false,
+        },
+        None => true,
+    };
+    if widening {
+        schema.insert(keyword.to_owned(), Value::Number(boundary));
     }
     Ok(())
+}
+
+fn integer_number(value: i128, path: &str) -> Result<Number, SchemaViolation> {
+    match (i64::try_from(value), u64::try_from(value)) {
+        (Ok(signed), _) => Ok(Number::from(signed)),
+        (_, Ok(unsigned)) => Ok(Number::from(unsigned)),
+        _ => fail(
+            path,
+            "supported integer format has an unrepresentable bound",
+        ),
+    }
 }

@@ -1,8 +1,12 @@
-//! Default-wire feasibility tests for accepted evidence schemas.
+//! Default-wire feasibility tests for generated and parsed evidence schemas.
 
+use std::borrow::Cow;
+
+use schemars::{JsonSchema, Schema, SchemaGenerator};
+use serde::Serialize;
 use serde_json::Map;
 
-use crate::wire::WireLimits;
+use crate::{diagnostic::PublicEvidence, wire::WireLimits};
 
 use super::schema;
 
@@ -129,6 +133,52 @@ fn locally_contradictory_constraints_are_rejected() {
 }
 
 #[test]
+fn arbitrary_precision_constraints_cannot_hide_impossible_instances() {
+    for constraints in [
+        r#"{"type":"array","minItems":18446744073709551616}"#,
+        r#"{"type":"string","minLength":18446744073709551616}"#,
+        r#"{"type":"integer","minimum":18446744073709551617,"maximum":18446744073709551616}"#,
+        r#"{"type":"number","format":"double","minimum":1e400}"#,
+        r#"{"type":"number","format":"double","maximum":-1e400}"#,
+    ] {
+        let parsed = serde_json::from_str(constraints)
+            .unwrap_or_else(|error| panic!("exact constraint must parse: {error}"));
+        let mut invalid = property(&parsed);
+
+        assert!(
+            schema::validate_artifact(&mut invalid).is_err(),
+            "accepted impossible exact constraint: {constraints}"
+        );
+    }
+}
+
+#[test]
+fn arbitrary_precision_comparison_preserves_valid_widening_bounds() {
+    let mut schema_value = property(&exact(
+        r#"{"type":"number","format":"double","minimum":-1e400,"maximum":1e400}"#,
+    ));
+
+    assert!(schema::validate_artifact(&mut schema_value).is_ok());
+    assert_eq!(
+        schema_value.pointer("/properties/value/minimum"),
+        Some(&serde_json::json!(-f64::MAX))
+    );
+    assert_eq!(
+        schema_value.pointer("/properties/value/maximum"),
+        Some(&serde_json::json!(f64::MAX))
+    );
+
+    for constraints in [
+        r#"{"type":"number","minimum":1e400,"maximum":9e399}"#,
+        r#"{"type":"number","minimum":-9e399,"maximum":-1e400}"#,
+        r#"{"type":"number","minimum":1.200,"exclusiveMaximum":1.2}"#,
+    ] {
+        let mut invalid = property(&exact(constraints));
+        assert!(schema::validate_artifact(&mut invalid).is_err());
+    }
+}
+
+#[test]
 fn a_partially_valid_enum_remains_satisfiable() {
     let mut value = property(&serde_json::json!({
         "type": "integer", "format": "uint8", "enum": [10, 300]
@@ -151,4 +201,40 @@ fn property(constraints: &serde_json::Value) -> serde_json::Value {
         "required": ["value"],
         "additionalProperties": false
     })
+}
+
+fn exact(encoded: &str) -> serde_json::Value {
+    serde_json::from_str(encoded)
+        .unwrap_or_else(|error| panic!("exact constraint must parse: {error}"))
+}
+
+#[derive(Debug, Serialize)]
+struct ExactNumberEvidence;
+
+impl JsonSchema for ExactNumberEvidence {
+    fn schema_name() -> Cow<'static, str> {
+        "ExactNumberEvidence".into()
+    }
+
+    fn json_schema(_generator: &mut SchemaGenerator) -> Schema {
+        serde_json::from_str(
+            r#"{
+                "type":"object",
+                "properties":{
+                    "items":{"type":"array","minItems":18446744073709551616}
+                },
+                "required":["items"],
+                "additionalProperties":false
+            }"#,
+        )
+        .unwrap_or_else(|error| panic!("exact generated schema must parse: {error}"))
+    }
+}
+
+impl PublicEvidence for ExactNumberEvidence {}
+
+#[test]
+fn generated_schemas_cannot_require_values_beyond_wire_limits() {
+    let violation = schema::normalize::<ExactNumberEvidence>().err();
+    assert!(violation.is_some_and(|error| error.reason.contains("default wire maximum")));
 }

@@ -139,6 +139,22 @@ fn parser_rejects_unbounded_schema_numbers_without_panicking() {
 }
 
 #[test]
+fn parser_rejects_exact_schema_bounds_beyond_the_wire_profile() {
+    let mut artifact = encoded_value();
+    artifact["diagnostics"][0]["evidence_schema"] = serde_json::from_str(
+        r#"{
+            "type":"object",
+            "properties":{"items":{"type":"array","minItems":18446744073709551616}},
+            "required":["items"],
+            "additionalProperties":false
+        }"#,
+    )
+    .unwrap_or_else(|error| panic!("exact schema fixture must parse: {error}"));
+
+    assert!(parse_value(&artifact).is_err());
+}
+
+#[test]
 fn parser_rejects_an_empty_artifact_with_an_exhausted_type_namespace() {
     let mut value = encoded_value();
     value["catalog"]["type_base"] = serde_json::json!(capacity_type_base("DSP"));

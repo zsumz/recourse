@@ -1,12 +1,11 @@
 //! Conservative rejection of schemas with impossible default-wire instances.
 
+mod depth;
 mod satisfiability;
-
-use std::collections::BTreeSet;
 
 use serde_json::{Map, Value};
 
-use super::{SchemaViolation, fail};
+use super::{SchemaViolation, fail, number};
 use crate::wire::{BoundedJsonError, WireLimits, to_bounded_vec, validate_embedded};
 
 pub(super) fn validate_local(
@@ -35,19 +34,7 @@ pub(super) fn validate_local(
 }
 
 pub(super) fn validate_depth(schema: &Value) -> Result<(), SchemaViolation> {
-    let depth = minimum_container_depth(schema, schema, &mut BTreeSet::new());
-    let actual = depth.saturating_add(1);
-    let maximum = WireLimits::DEFAULT_MAX_NESTING_DEPTH;
-    if actual > maximum {
-        fail(
-            "$",
-            &format!(
-                "mandatory evidence nesting requires depth {actual}; default wire maximum is {maximum}"
-            ),
-        )
-    } else {
-        Ok(())
-    }
+    depth::validate(schema)
 }
 
 fn reject_excessive_minimum(
@@ -56,10 +43,11 @@ fn reject_excessive_minimum(
     maximum: usize,
     path: &str,
 ) -> Result<(), SchemaViolation> {
-    let Some(actual) = schema.get(keyword).and_then(Value::as_u64) else {
+    let Some(actual) = schema.get(keyword).and_then(Value::as_number) else {
         return Ok(());
     };
-    if actual > maximum as u64 {
+    let maximum_number = serde_json::Number::from(maximum as u64);
+    if number::compare(actual, &maximum_number, path)? == std::cmp::Ordering::Greater {
         fail(
             path,
             &format!("{keyword} {actual} exceeds default wire maximum {maximum}"),
@@ -126,90 +114,6 @@ fn validate_fixed_value(
     }
 }
 
-fn minimum_container_depth(
-    schema: &Value,
-    root: &Value,
-    references: &mut BTreeSet<String>,
-) -> usize {
-    let Some(object) = schema.as_object() else {
-        return 0;
-    };
-    if let Some(value) = object.get("const") {
-        return value_depth(value);
-    }
-    if let Some(values) = object.get("enum").and_then(Value::as_array) {
-        return values.iter().map(value_depth).min().unwrap_or(0);
-    }
-    let mut depth = type_depth(object, root, references);
-    for keyword in ["anyOf", "oneOf"] {
-        let choice = object
-            .get(keyword)
-            .and_then(Value::as_array)
-            .and_then(|values| {
-                values
-                    .iter()
-                    .map(|value| minimum_container_depth(value, root, references))
-                    .min()
-            })
-            .unwrap_or(0);
-        depth = depth.max(choice);
-    }
-    if let Some(reference) = object.get("$ref").and_then(Value::as_str) {
-        if !references.insert(reference.to_owned()) {
-            return usize::MAX;
-        }
-        let referenced = root.pointer(reference.trim_start_matches('#'));
-        let reference_depth =
-            referenced.map_or(0, |value| minimum_container_depth(value, root, references));
-        references.remove(reference);
-        depth = depth.max(reference_depth);
-    }
-    depth
-}
-
-fn type_depth(
-    schema: &Map<String, Value>,
-    root: &Value,
-    references: &mut BTreeSet<String>,
-) -> usize {
-    if exact_type(schema.get("type"), "object") {
-        let child = schema
-            .get("required")
-            .and_then(Value::as_array)
-            .into_iter()
-            .flatten()
-            .filter_map(Value::as_str)
-            .filter_map(|name| schema.get("properties")?.get(name))
-            .map(|value| minimum_container_depth(value, root, references))
-            .max()
-            .unwrap_or(0);
-        1usize.saturating_add(child)
-    } else if exact_type(schema.get("type"), "array") {
-        let child = if schema.get("minItems").and_then(Value::as_u64) > Some(0) {
-            schema
-                .get("items")
-                .map_or(0, |value| minimum_container_depth(value, root, references))
-        } else {
-            0
-        };
-        1usize.saturating_add(child)
-    } else {
-        0
-    }
-}
-
 fn exact_type(value: Option<&Value>, expected: &str) -> bool {
     matches!(value, Some(Value::String(value)) if value == expected)
-}
-
-fn value_depth(value: &Value) -> usize {
-    match value {
-        Value::Object(object) => {
-            1usize.saturating_add(object.values().map(value_depth).max().unwrap_or(0))
-        }
-        Value::Array(values) => {
-            1usize.saturating_add(values.iter().map(value_depth).max().unwrap_or(0))
-        }
-        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => 0,
-    }
 }

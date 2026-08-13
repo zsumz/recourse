@@ -26,6 +26,7 @@ const RULES: &[DependencyRule] = &[
             "http",
             "httpdate",
             "jsonschema",
+            "num-bigint",
             "schemars",
             "serde",
             "serde_json",

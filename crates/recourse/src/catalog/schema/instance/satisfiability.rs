@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 
 use serde_json::{Map, Number, Value};
 
-use super::super::{SchemaViolation, build_validator, fail};
+use super::super::{SchemaViolation, build_validator, fail, number};
 
 pub(super) fn validate(schema: &Map<String, Value>, path: &str) -> Result<(), SchemaViolation> {
     validate_numeric_interval(schema, path)?;
@@ -28,10 +28,10 @@ fn validate_numeric_interval(
     ];
     for lower in lower.into_iter().flatten() {
         for upper in upper.into_iter().flatten() {
-            let impossible = match compare_numbers(lower.value, upper.value) {
-                Some(Ordering::Greater) => true,
-                Some(Ordering::Equal) => lower.exclusive || upper.exclusive,
-                Some(Ordering::Less) | None => false,
+            let impossible = match number::compare(lower.value, upper.value, path)? {
+                Ordering::Greater => true,
+                Ordering::Equal => lower.exclusive || upper.exclusive,
+                Ordering::Less => false,
             };
             if impossible {
                 return fail(
@@ -57,50 +57,19 @@ fn bound<'a>(schema: &'a Map<String, Value>, keyword: &str, exclusive: bool) -> 
         .map(|value| Bound { value, exclusive })
 }
 
-fn compare_numbers(left: &Number, right: &Number) -> Option<Ordering> {
-    if left.is_f64() || right.is_f64() {
-        return if left.is_f64() && right.is_f64() {
-            left.as_f64()?.partial_cmp(&right.as_f64()?)
-        } else {
-            None
-        };
-    }
-    if let (Some(left), Some(right)) = (left.as_i64(), right.as_i64()) {
-        return Some(left.cmp(&right));
-    }
-    if let (Some(left), Some(right)) = (left.as_u64(), right.as_u64()) {
-        return Some(left.cmp(&right));
-    }
-    if let (Some(left), Some(right)) = (left.as_i64(), right.as_u64()) {
-        return if left < 0 {
-            Some(Ordering::Less)
-        } else {
-            u64::try_from(left).ok().map(|left| left.cmp(&right))
-        };
-    }
-    if let (Some(left), Some(right)) = (left.as_u64(), right.as_i64()) {
-        return if right < 0 {
-            Some(Ordering::Greater)
-        } else {
-            u64::try_from(right).ok().map(|right| left.cmp(&right))
-        };
-    }
-    None
-}
-
 fn validate_size_interval(
     schema: &Map<String, Value>,
     minimum: &str,
     maximum: &str,
     path: &str,
 ) -> Result<(), SchemaViolation> {
-    let Some(lower) = schema.get(minimum).and_then(Value::as_u64) else {
+    let Some(lower) = schema.get(minimum).and_then(Value::as_number) else {
         return Ok(());
     };
-    let Some(upper) = schema.get(maximum).and_then(Value::as_u64) else {
+    let Some(upper) = schema.get(maximum).and_then(Value::as_number) else {
         return Ok(());
     };
-    if lower > upper {
+    if number::compare(lower, upper, path)? == Ordering::Greater {
         fail(
             path,
             &format!("{minimum} {lower} exceeds {maximum} {upper}"),
