@@ -1,9 +1,7 @@
 //! JSON object parsing under explicit resource and shape budgets.
 
-use serde::Deserialize;
 use serde_json::{Map, Value};
 
-use super::unique::UniqueValue;
 use super::validation::validate_shape;
 use super::{DecodeError, DecodeLimit, DecodeLimits};
 
@@ -35,12 +33,7 @@ fn decode_value(body: &[u8], limits: DecodeLimits) -> Result<Value, DecodeError>
             actual: body.len(),
         });
     }
-    let mut deserializer = serde_json::Deserializer::from_slice(body);
-    let value = UniqueValue::deserialize(&mut deserializer)
-        .map_err(DecodeError::MalformedJson)?
-        .into_inner();
-    deserializer.end().map_err(DecodeError::MalformedJson)?;
-    Ok(value)
+    super::unique::parse(body).map_err(DecodeError::MalformedJson)
 }
 
 fn into_object(value: Value) -> Result<Map<String, Value>, DecodeError> {

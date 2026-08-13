@@ -167,8 +167,12 @@ fn finite_f32_boundaries_cross_the_public_envelope_exactly() {
             .unwrap_or_else(|error| panic!("finite Problem must encode: {error}"));
         let body: serde_json::Value = serde_json::from_slice(encoded.body())
             .unwrap_or_else(|error| panic!("encoded Problem must parse: {error}"));
-        let expected = serde_json::from_str::<serde_json::Value>(&value.to_string())
-            .unwrap_or_else(|error| panic!("finite float fixture must parse: {error}"));
-        assert_eq!(body.pointer("/evidence/value"), Some(&expected));
+        let number = body
+            .pointer("/evidence/value")
+            .cloned()
+            .unwrap_or_else(|| panic!("finite float must remain present: {body}"));
+        let reparsed = serde_json::from_value::<f32>(number)
+            .unwrap_or_else(|error| panic!("finite float must remain numeric: {error}"));
+        assert_eq!(reparsed.to_bits(), value.to_bits());
     }
 }

@@ -39,6 +39,7 @@ fn duplicate_members_are_rejected_at_every_depth() {
     for body in [
         br#"{"code":"CLI-1","code":"CLI-2"}"#.as_slice(),
         br#"{"evidence":{"id":1,"id":2}}"#.as_slice(),
+        br#"{"evidence":{"id":1,"\u0069d":2}}"#.as_slice(),
         br#"{"evidence":[{"id":1,"id":2}]}"#.as_slice(),
     ] {
         let error = decode_object(body, DecodeLimits::default())
@@ -46,6 +47,43 @@ fn duplicate_members_are_rejected_at_every_depth() {
             .unwrap_or_else(|| panic!("duplicate member must be rejected"));
         assert!(matches!(error, DecodeError::MalformedJson(_)));
         assert!(error.to_string().contains("duplicate JSON member"));
+    }
+}
+
+#[test]
+fn numbers_and_private_key_objects_retain_their_wire_shape() {
+    let object = decode_object(
+        br#"{"decimal":1.25,"exponent":1e-30,"wide":18446744073709551616,"opaque":{"$serde_json::private::Number":"1.25"}}"#,
+        DecodeLimits::default(),
+    )
+    .unwrap_or_else(|error| panic!("numeric fixture must decode: {error}"));
+
+    for (member, expected) in [
+        ("decimal", "1.25"),
+        ("exponent", "1e-30"),
+        ("wide", "18446744073709551616"),
+    ] {
+        assert!(object[member].is_number());
+        assert_eq!(object[member].to_string(), expected);
+    }
+    assert_eq!(object["opaque"]["$serde_json::private::Number"], "1.25");
+}
+
+#[test]
+fn malformed_scalar_and_container_boundaries_are_rejected() {
+    for body in [
+        br#"{"value":01}"#.as_slice(),
+        br#"{"value":1.}"#.as_slice(),
+        br#"{"value":true false}"#.as_slice(),
+        br#"{"value":"unterminated}"#.as_slice(),
+        br#"{"value":[],}"#.as_slice(),
+        br#"{"value":[1 2]}"#.as_slice(),
+        br#"{"value":1} trailing"#.as_slice(),
+    ] {
+        assert!(matches!(
+            decode_object(body, DecodeLimits::default()),
+            Err(DecodeError::MalformedJson(_))
+        ));
     }
 }
 

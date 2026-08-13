@@ -39,7 +39,7 @@ recourse-axum = { version = "=0.0.1-rc.2", path = "crates/recourse-axum" }
 rustix = { version = "1.1.4", features = ["fs"] }
 schemars = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde_json = { version = "1.0", features = ["arbitrary_precision", "float_roundtrip"] }
 syn = { version = "2.0", features = ["full", "visit"] }
 tokio = { version = "1.47", features = ["macros", "net", "rt-multi-thread"] }
 time = { version = "0.3.55", features = ["formatting", "parsing"] }

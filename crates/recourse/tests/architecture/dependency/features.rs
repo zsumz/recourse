@@ -45,6 +45,26 @@ fn schema_validation_is_offline_by_construction() {
 }
 
 #[test]
+fn serde_json_numeric_identity_features_are_owned_directly() {
+    let workspace = workspace_root();
+    let root = read(&workspace.join("Cargo.toml"))
+        .parse::<toml::Value>()
+        .unwrap_or_else(|error| panic!("parse workspace manifest: {error}"));
+    let features = root["workspace"]["dependencies"]["serde_json"]["features"]
+        .as_array()
+        .unwrap_or_else(|| panic!("serde_json features must be explicit"));
+    assert_eq!(features.len(), 2);
+    for required in ["arbitrary_precision", "float_roundtrip"] {
+        assert!(
+            features
+                .iter()
+                .any(|feature| feature.as_str() == Some(required)),
+            "serde_json dependency omits {required}"
+        );
+    }
+}
+
+#[test]
 fn preserve_order_consumers_must_match_default_canonical_bytes() {
     let workspace = workspace_root();
     let preserve = read(&workspace.join("conformance/canonical-json/preserve-order/Cargo.toml"))
