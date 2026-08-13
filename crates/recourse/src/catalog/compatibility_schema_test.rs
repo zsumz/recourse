@@ -139,6 +139,24 @@ fn optional_addition_breaks_when_the_accepted_schema_rejects_unknown_fields() {
     }));
 }
 
+#[test]
+fn equivalent_json_number_spellings_do_not_break_compatibility() {
+    let previous = artifact(
+        serde_json::from_str(r#"{"type":"object","properties":{"value":{"type":"number","minimum":1,"enum":[1,2]}}}"#)
+            .unwrap_or_else(|error| panic!("previous schema must parse: {error}")),
+    );
+    let current = artifact(
+        serde_json::from_str(r#"{"type":"object","properties":{"value":{"type":"number","minimum":1.00,"enum":[1.0,2.00]}}}"#)
+            .unwrap_or_else(|error| panic!("current schema must parse: {error}")),
+    );
+
+    assert!(
+        !CatalogLock::from_artifact(&previous)
+            .check(&current)
+            .has_breaking()
+    );
+}
+
 fn with_impact(schema: &serde_json::Value) -> CatalogArtifact {
     let baseline = artifact(serde_json::json!({"type": "object"}));
     let mut value = serde_json::to_value(baseline)

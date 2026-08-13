@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 
 use serde_json::{Map, Value};
 
-use crate::catalog::Code;
+use crate::catalog::{Code, schema::number};
 
 use super::{ChangeInput, CompatibilityChange, push};
 
@@ -15,7 +15,7 @@ pub(super) fn compare(
     current: &Value,
     changes: &mut Vec<CompatibilityChange>,
 ) {
-    if previous == current {
+    if number::values_equal(previous, current) {
         return;
     }
     let (Some(previous), Some(current)) = (previous.as_object(), current.as_object()) else {
@@ -150,7 +150,9 @@ fn compare_other_keywords(
         .filter(|key| !ignored.contains(&key.as_str()))
         .collect::<BTreeSet<_>>();
     for key in keys {
-        if previous.get(key) != current.get(key) {
+        if !matches!((previous.get(key), current.get(key)),
+            (Some(previous), Some(current)) if number::values_equal(previous, current))
+        {
             push(
                 changes,
                 ChangeInput::schema_changed(code, &format!("{path}.{key}")),
