@@ -42,6 +42,10 @@ fn schema_validation_is_offline_by_construction() {
         root["workspace"]["dependencies"]["jsonschema"]["default-features"].as_bool(),
         Some(false)
     );
+    assert_eq!(
+        root["workspace"]["dependencies"]["jsonschema"]["features"][0].as_str(),
+        Some("arbitrary-precision")
+    );
 }
 
 #[test]
