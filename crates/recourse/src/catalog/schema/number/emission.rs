@@ -6,10 +6,7 @@ use serde_json::{Number, Value};
 
 use super::{SchemaViolation, compare, validate_token};
 
-pub(in crate::catalog::schema) fn value_is_public(
-    value: &Value,
-    path: &str,
-) -> Result<bool, SchemaViolation> {
+pub(crate) fn value_is_public(value: &Value, path: &str) -> Result<bool, SchemaViolation> {
     match value {
         Value::Number(number) => is_public(number, path),
         Value::Array(values) => values_are_public(values.iter(), path),
@@ -30,10 +27,7 @@ fn values_are_public<'a>(
     Ok(true)
 }
 
-pub(in crate::catalog::schema) fn is_public(
-    number: &Number,
-    path: &str,
-) -> Result<bool, SchemaViolation> {
+pub(crate) fn is_public(number: &Number, path: &str) -> Result<bool, SchemaViolation> {
     validate_token(number, path)?;
     if number.as_i64().is_some() || number.as_u64().is_some() {
         return Ok(true);

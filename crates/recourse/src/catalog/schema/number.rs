@@ -1,8 +1,6 @@
 //! Exact comparison for the complete JSON decimal number domain.
 
 mod emission;
-#[cfg(test)]
-mod emission_test;
 
 use std::cmp::Ordering;
 
@@ -13,7 +11,7 @@ use super::SchemaViolation;
 use crate::wire::WireLimits;
 
 pub(crate) use emission::values_equal;
-pub(super) use emission::{is_public, value_is_public};
+pub(crate) use emission::{is_public, value_is_public};
 
 #[derive(Debug)]
 struct ExactNumber {

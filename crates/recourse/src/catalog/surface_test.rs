@@ -12,7 +12,10 @@ use crate::{
     operation::OperationDiagnosticType,
 };
 
-use super::{Catalog, CatalogIssue, CatalogSpec, CodeNumber};
+use super::{
+    Catalog, CatalogIssue, CatalogSpec, CodeNumber,
+    schema::number::{is_public, values_equal},
+};
 
 enum TestCatalog {}
 
@@ -166,4 +169,37 @@ fn operation_impact_cannot_require_an_unemittable_number() {
             CatalogIssue::UnsupportedImpactSchema { number, .. } if *number == CodeNumber::new(12)
         )))
     );
+}
+
+fn exact_number(encoded: &str) -> serde_json::Number {
+    serde_json::from_str(encoded).unwrap_or_else(|error| panic!("exact number must parse: {error}"))
+}
+
+#[test]
+fn public_numeric_domain_matches_primitive_emitters() {
+    for encoded in [
+        "-9223372036854775808",
+        "18446744073709551615",
+        "0.1",
+        "3.4028235e38",
+        "1.7976931348623157e308",
+    ] {
+        assert!(
+            is_public(&exact_number(encoded), "$").unwrap_or(false),
+            "{encoded}"
+        );
+    }
+    for encoded in ["18446744073709551616", "0.100000000000000000001", "1e400"] {
+        assert!(
+            !is_public(&exact_number(encoded), "$").unwrap_or(true),
+            "{encoded}"
+        );
+    }
+}
+
+#[test]
+fn equivalent_decimal_spellings_are_exactly_equal() {
+    let integer = serde_json::Value::Number(exact_number("1"));
+    let decimal = serde_json::Value::Number(exact_number("1.00"));
+    assert!(values_equal(&integer, &decimal));
 }
