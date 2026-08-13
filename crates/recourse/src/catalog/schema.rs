@@ -62,6 +62,7 @@ pub(crate) fn normalize<E: PublicEvidence>() -> Result<Value, SchemaViolation> {
     let mut schema = SchemaGenerator::default()
         .into_root_schema_for::<E>()
         .to_value();
+    number::validate_tokens(&schema)?;
     compile::validate_draft(&schema)?;
     let mut references = Vec::new();
     visit_schema(&mut schema, "$", true, &mut references)?;
@@ -74,6 +75,7 @@ pub(crate) fn normalize<E: PublicEvidence>() -> Result<Value, SchemaViolation> {
 }
 
 pub(crate) fn validate_artifact(schema: &mut Value) -> Result<(), SchemaViolation> {
+    number::validate_tokens(schema)?;
     compile::validate_draft(schema)?;
     let mut references = Vec::new();
     visit_schema(schema, "$", true, &mut references)?;

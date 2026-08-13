@@ -1,11 +1,19 @@
 //! Exact comparison for the complete JSON decimal number domain.
 
+mod emission;
+#[cfg(test)]
+mod emission_test;
+
 use std::cmp::Ordering;
 
 use num_bigint::BigInt;
-use serde_json::Number;
+use serde_json::{Number, Value};
 
 use super::SchemaViolation;
+use crate::wire::WireLimits;
+
+pub(crate) use emission::values_equal;
+pub(super) use emission::{is_public, value_is_public};
 
 #[derive(Debug)]
 struct ExactNumber {
@@ -16,10 +24,11 @@ struct ExactNumber {
 
 impl ExactNumber {
     fn parse(number: &Number, path: &str) -> Result<Self, SchemaViolation> {
-        let encoded = number.to_string();
+        validate_token(number, path)?;
+        let encoded = number.as_str();
         let (negative, unsigned) = encoded
             .strip_prefix('-')
-            .map_or((false, encoded.as_str()), |value| (true, value));
+            .map_or((false, encoded), |value| (true, value));
         let (mantissa, exponent) = split_exponent(unsigned);
         let decimal = mantissa.find('.').unwrap_or(mantissa.len());
         let digits = mantissa
@@ -114,6 +123,45 @@ pub(super) fn is_integer(number: &Number, path: &str) -> Result<bool, SchemaViol
 pub(super) fn is_positive(number: &Number, path: &str) -> Result<bool, SchemaViolation> {
     let zero = Number::from(0_u8);
     Ok(compare(number, &zero, path)? == Ordering::Greater)
+}
+
+pub(super) fn validate_tokens(value: &Value) -> Result<(), SchemaViolation> {
+    let mut pending = vec![(value, "$".to_owned())];
+    while let Some((value, path)) = pending.pop() {
+        match value {
+            Value::Number(number) => validate_token(number, &path)?,
+            Value::Array(values) => pending.extend(
+                values
+                    .iter()
+                    .enumerate()
+                    .map(|(index, value)| (value, format!("{path}/{index}"))),
+            ),
+            Value::Object(object) => pending.extend(
+                object
+                    .iter()
+                    .map(|(key, value)| (value, format!("{path}/{}", pointer_segment(key)))),
+            ),
+            Value::Null | Value::Bool(_) | Value::String(_) => {}
+        }
+    }
+    Ok(())
+}
+
+fn validate_token(number: &Number, path: &str) -> Result<(), SchemaViolation> {
+    let actual = number.as_str().len();
+    let maximum = WireLimits::DEFAULT_MAX_NUMBER_BYTES;
+    if actual > maximum {
+        Err(SchemaViolation {
+            path: path.to_owned(),
+            reason: format!("numeric token is {actual} bytes; default wire maximum is {maximum}"),
+        })
+    } else {
+        Ok(())
+    }
+}
+
+fn pointer_segment(value: &str) -> String {
+    value.replace('~', "~0").replace('/', "~1")
 }
 
 fn split_exponent(value: &str) -> (&str, &str) {

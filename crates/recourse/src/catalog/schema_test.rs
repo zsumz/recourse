@@ -204,3 +204,30 @@ fn one_hundred_twenty_eight_bit_and_platform_numeric_formats_are_rejected() {
         assert!(schema::validate_artifact(&mut invalid).is_err(), "{format}");
     }
 }
+
+#[test]
+fn schemas_cannot_require_numbers_no_public_emitter_can_produce() {
+    for constraints in [
+        r#"{"type":"number","const":1e400}"#,
+        r#"{"type":"integer","const":18446744073709551617}"#,
+        r#"{"type":"number","enum":[1e400]}"#,
+        r#"{"type":"integer","minimum":18446744073709551617,"maximum":18446744073709551617}"#,
+        r#"{"type":"number","minimum":1e400}"#,
+        r#"{"type":"number","maximum":-1e400}"#,
+    ] {
+        let constraint: Value = serde_json::from_str(constraints)
+            .unwrap_or_else(|error| panic!("exact constraint must parse: {error}"));
+        let mut value = serde_json::json!({
+            "type": "object", "properties": {"value": constraint}
+        });
+        assert!(
+            schema::validate_artifact(&mut value).is_err(),
+            "{constraints}"
+        );
+    }
+
+    let choice: Value = serde_json::from_str(r#"{"type":"number","enum":[1e400,42]}"#)
+        .unwrap_or_else(|error| panic!("mixed enum must parse: {error}"));
+    let mut value = serde_json::json!({"type":"object","properties":{"value":choice}});
+    assert!(schema::validate_artifact(&mut value).is_ok());
+}

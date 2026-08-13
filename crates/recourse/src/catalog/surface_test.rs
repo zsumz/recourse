@@ -1,6 +1,8 @@
 //! Multi-surface catalog merging and impact-schema validation tests.
 
-use schemars::JsonSchema;
+use std::borrow::Cow;
+
+use schemars::{JsonSchema, Schema, SchemaGenerator};
 use serde::Serialize;
 
 use crate::{
@@ -115,4 +117,53 @@ fn operation_impact_must_use_the_public_object_profile() {
             )
         })
     }));
+}
+
+#[derive(Debug, Serialize)]
+struct UnemittableImpact;
+
+impl PublicEvidence for UnemittableImpact {}
+
+impl JsonSchema for UnemittableImpact {
+    fn schema_name() -> Cow<'static, str> {
+        "UnemittableImpact".into()
+    }
+
+    fn json_schema(_generator: &mut SchemaGenerator) -> Schema {
+        serde_json::from_str(
+            r#"{"type":"object","properties":{"value":{"type":"number","const":1e400}}}"#,
+        )
+        .unwrap_or_else(|error| panic!("exact impact schema must parse: {error}"))
+    }
+}
+
+enum ImpossibleImpact {}
+
+impl DiagnosticType for ImpossibleImpact {
+    type Catalog = TestCatalog;
+    type Evidence = NoEvidence;
+
+    const NUMBER: CodeNumber = CodeNumber::new(12);
+    const TITLE: &'static str = "Impossible impact";
+    const DETAIL: &'static str = "The impact cannot be emitted.";
+    const SUGGESTIONS: &'static [&'static str] = &[];
+    const DOCS: &'static str = "Impossible numeric impact fixture.";
+}
+
+impl OperationDiagnosticType for ImpossibleImpact {
+    type Impact = UnemittableImpact;
+}
+
+#[test]
+fn operation_impact_cannot_require_an_unemittable_number() {
+    let error = Catalog::<TestCatalog>::builder()
+        .operation::<ImpossibleImpact>()
+        .build()
+        .err();
+    assert!(
+        error.is_some_and(|error| error.issues().iter().any(|issue| matches!(
+            issue,
+            CatalogIssue::UnsupportedImpactSchema { number, .. } if *number == CodeNumber::new(12)
+        )))
+    );
 }
