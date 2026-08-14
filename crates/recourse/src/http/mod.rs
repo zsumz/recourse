@@ -11,11 +11,13 @@ pub use occurrence::{
     CorrelationId, CorrelationIdError, MAX_CORRELATION_ID_BYTES, ProblemOccurrence,
     ProblemOccurrenceError,
 };
-pub(crate) use policy::mandatory_headers;
 pub use policy::{
     AllowedMethods, AllowedMethodsError, BasicChallenge, BasicChallengeError, BasicUnauthorized,
     BearerChallenge, BearerChallengeError, BearerUnauthorized, Fixed, HttpPolicy, HttpProblemType,
     MethodNotAllowed, PolicyError, RetryAfter, RetryAfterError, RetryAfterPolicy,
+};
+pub(crate) use policy::{
+    mandatory_headers, validate_named_response_headers, validate_typed_response_headers,
 };
 pub use problem::{Problem, ProblemBuildError, ProblemEncodeError};
 pub use uri_reference::{UriReference, UriReferenceError};

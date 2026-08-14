@@ -1,11 +1,11 @@
 //! Catalog-aware and typed HTTP conformance tests.
 
-use http::{HeaderMap, HeaderValue, StatusCode, header::WWW_AUTHENTICATE};
+use http::{HeaderMap, StatusCode};
 
 use crate::{
     catalog::{Catalog, CatalogSpec, CodeNumber},
     diagnostic::{DiagnosticType, NoEvidence},
-    http::{BearerUnauthorized, Fixed, HttpProblemType},
+    http::{Fixed, HttpProblemType},
 };
 
 use super::{
@@ -42,12 +42,10 @@ macro_rules! diagnostic {
 }
 
 diagnostic!(NotFound, 1, Fixed<404>);
-diagnostic!(AuthenticationRequired, 2, BearerUnauthorized);
 
 fn catalog() -> Catalog<TestCatalog> {
     Catalog::<TestCatalog>::builder()
         .problem::<NotFound>()
-        .problem::<AuthenticationRequired>()
         .build()
         .unwrap_or_else(|error| panic!("test catalog must build: {error}"))
 }
@@ -78,36 +76,6 @@ fn known_problem_reports_catalog_status_mismatch_and_refuses_typed_access() {
         problem.try_as::<NotFound>(),
         Err(TypedProblemError::StatusMismatch { .. })
     ));
-}
-
-#[test]
-fn required_headers_are_checked_by_catalog_and_typed_access() {
-    let body = br#"{"type":"https://client.invalid/problems/CLI-2","code":"CLI-2"}"#;
-    let missing = received(body, StatusCode::UNAUTHORIZED, &HeaderMap::new());
-    let catalog = catalog();
-    let ProblemClassification::Known(known) = catalog.classify(&missing) else {
-        panic!("known code must classify");
-    };
-
-    assert!(matches!(
-        known.catalog_issues(),
-        [ProtocolIssue::MissingRequiredHeader { header }] if header == "www-authenticate"
-    ));
-    assert!(matches!(
-        missing.try_as::<AuthenticationRequired>(),
-        Err(TypedProblemError::MissingRequiredHeader {
-            header: "www-authenticate"
-        })
-    ));
-
-    let mut headers = HeaderMap::new();
-    headers.insert(WWW_AUTHENTICATE, HeaderValue::from_static("Bearer"));
-    let conformant = received(body, StatusCode::UNAUTHORIZED, &headers);
-    assert!(
-        conformant
-            .try_as::<AuthenticationRequired>()
-            .is_ok_and(|typed| typed.is_some())
-    );
 }
 
 #[test]

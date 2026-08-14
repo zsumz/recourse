@@ -11,6 +11,12 @@ ship as one versioned cohort.
   UTF-8 credential-encoding advertisement, behind a sealed `BasicUnauthorized`
   policy.
 
+### Fixed
+
+- receive-side catalog classification and typed access now reject malformed or
+  wrong-scheme authentication challenges instead of treating header presence
+  alone as policy conformance.
+
 ## [0.0.1-rc.2] - 2026-08-13
 
 ### Migrating from rc.1

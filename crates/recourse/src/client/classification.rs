@@ -6,7 +6,10 @@ mod operation;
 use http::StatusCode;
 use serde_json::{Map, Value};
 
-use crate::catalog::{Catalog, CatalogDiagnostic, CatalogSpec};
+use crate::{
+    catalog::{Catalog, CatalogDiagnostic, CatalogSpec},
+    http::validate_named_response_headers,
+};
 
 use super::{ProtocolIssue, ReceivedProblem};
 
@@ -137,6 +140,14 @@ fn catalog_issues(diagnostic: &CatalogDiagnostic, problem: &ReceivedProblem) -> 
                 header: header.clone(),
             });
         }
+    }
+    if let Some(policy) = diagnostic.http_policy()
+        && let Err(issue) = validate_named_response_headers(policy, problem.headers())
+    {
+        issues.push(ProtocolIssue::RequiredHeaderMismatch {
+            header: issue.header.to_owned(),
+            expected: issue.expected.to_owned(),
+        });
     }
     issues
 }

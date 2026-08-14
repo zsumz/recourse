@@ -8,8 +8,11 @@ use std::{
 
 use http::{HeaderMap, HeaderValue, header::WWW_AUTHENTICATE};
 
-use super::realm::{MAX_REALM_BYTES, RealmIssue, escape, is_visible_ascii, validate};
-use crate::http::policy::{HttpPolicy, PolicyError, sealed::Sealed};
+use super::{
+    realm::{MAX_REALM_BYTES, RealmIssue, escape, is_visible_ascii, validate},
+    response::has_valid_basic_challenge,
+};
+use crate::http::policy::{HttpPolicy, PolicyError, PolicyResponseIssue, sealed::Sealed};
 
 /// Valid Basic challenge for a `WWW-Authenticate` response header.
 ///
@@ -135,7 +138,17 @@ impl Error for BasicChallengeError {}
 #[derive(Debug, Clone, Copy, Default)]
 pub struct BasicUnauthorized;
 
-impl Sealed for BasicUnauthorized {}
+impl Sealed for BasicUnauthorized {
+    fn validate_response_headers(headers: &HeaderMap) -> Result<(), PolicyResponseIssue> {
+        if !headers.contains_key(WWW_AUTHENTICATE) || has_valid_basic_challenge(headers) {
+            return Ok(());
+        }
+        Err(PolicyResponseIssue {
+            header: "www-authenticate",
+            expected: "a valid Basic challenge with a realm",
+        })
+    }
+}
 
 impl HttpPolicy for BasicUnauthorized {
     type Input = BasicChallenge;

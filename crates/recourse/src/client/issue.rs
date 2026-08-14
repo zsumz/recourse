@@ -62,4 +62,11 @@ pub enum ProtocolIssue {
     CodeNotRegisteredForOperation,
     /// Known diagnostic code is not registered for the health surface.
     CodeNotRegisteredForHealth,
+    /// A required response header did not satisfy its governed value contract.
+    RequiredHeaderMismatch {
+        /// Canonical lowercase header name.
+        header: String,
+        /// Human-readable governed value contract.
+        expected: String,
+    },
 }

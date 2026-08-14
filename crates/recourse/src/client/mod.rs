@@ -9,6 +9,7 @@ mod received_health;
 mod received_operation;
 mod terminal;
 mod typed;
+mod typed_error;
 
 pub use classification::{
     Classification, HealthClassification, KnownHealthClassification, KnownOperationClassification,
@@ -21,8 +22,11 @@ pub use received::ReceivedProblem;
 pub use received_health::ReceivedHealthFinding;
 pub use received_operation::ReceivedOperationDiagnostic;
 pub use terminal::escape_terminal;
-pub use typed::{ReceivedTypedProblem, TypedProblemError};
+pub use typed::ReceivedTypedProblem;
+pub use typed_error::TypedProblemError;
 
+#[cfg(test)]
+mod conformance_authentication_test;
 #[cfg(test)]
 mod conformance_test;
 #[cfg(test)]

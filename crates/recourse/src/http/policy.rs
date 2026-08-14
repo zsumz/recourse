@@ -25,7 +25,43 @@ pub use retry::{RetryAfter, RetryAfterError, RetryAfterPolicy};
 mod sealed {
     //! Private boundary for protocol-owned HTTP policies.
 
-    pub trait Sealed {}
+    use http::HeaderMap;
+
+    use super::PolicyResponseIssue;
+
+    pub trait Sealed {
+        fn validate_response_headers(_headers: &HeaderMap) -> Result<(), PolicyResponseIssue> {
+            Ok(())
+        }
+    }
+}
+
+/// Internal mismatch between a received header and a sealed policy contract.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PolicyResponseIssue {
+    /// Canonical required header name.
+    pub(crate) header: &'static str,
+    /// Human-readable governed value contract.
+    pub(crate) expected: &'static str,
+}
+
+pub(crate) fn validate_typed_response_headers<P: HttpPolicy>(
+    headers: &HeaderMap,
+) -> Result<(), PolicyResponseIssue> {
+    <P as sealed::Sealed>::validate_response_headers(headers)
+}
+
+pub(crate) fn validate_named_response_headers(
+    policy: &str,
+    headers: &HeaderMap,
+) -> Result<(), PolicyResponseIssue> {
+    if policy == BasicUnauthorized::NAME {
+        validate_typed_response_headers::<BasicUnauthorized>(headers)
+    } else if policy == BearerUnauthorized::NAME {
+        validate_typed_response_headers::<BearerUnauthorized>(headers)
+    } else {
+        Ok(())
+    }
 }
 
 /// Protocol-owned HTTP response policy.

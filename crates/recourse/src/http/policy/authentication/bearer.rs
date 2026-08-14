@@ -8,8 +8,11 @@ use std::{
 
 use http::{HeaderMap, HeaderValue, header::WWW_AUTHENTICATE};
 
-use super::realm::{MAX_REALM_BYTES, RealmIssue, escape, is_visible_ascii, validate};
-use crate::http::policy::{HttpPolicy, PolicyError, sealed::Sealed};
+use super::{
+    realm::{MAX_REALM_BYTES, RealmIssue, escape, is_visible_ascii, validate},
+    response::has_valid_bearer_challenge,
+};
+use crate::http::policy::{HttpPolicy, PolicyError, PolicyResponseIssue, sealed::Sealed};
 
 /// Valid Bearer challenge for a `WWW-Authenticate` response header.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -113,7 +116,17 @@ impl Error for BearerChallengeError {}
 #[derive(Debug, Clone, Copy, Default)]
 pub struct BearerUnauthorized;
 
-impl Sealed for BearerUnauthorized {}
+impl Sealed for BearerUnauthorized {
+    fn validate_response_headers(headers: &HeaderMap) -> Result<(), PolicyResponseIssue> {
+        if !headers.contains_key(WWW_AUTHENTICATE) || has_valid_bearer_challenge(headers) {
+            return Ok(());
+        }
+        Err(PolicyResponseIssue {
+            header: "www-authenticate",
+            expected: "a valid Bearer challenge",
+        })
+    }
+}
 
 impl HttpPolicy for BearerUnauthorized {
     type Input = BearerChallenge;
