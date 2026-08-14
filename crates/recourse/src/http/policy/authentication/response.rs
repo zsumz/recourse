@@ -13,7 +13,8 @@ pub(super) fn has_valid_basic_challenge(headers: &HeaderMap) -> bool {
 pub(super) fn has_valid_bearer_challenge(headers: &HeaderMap) -> bool {
     has_challenge(headers, |challenge| {
         challenge.scheme.eq_ignore_ascii_case(b"Bearer")
-            && !matches!(challenge.data, ChallengeData::Token68)
+            && matches!(challenge.data, ChallengeData::Parameters(_))
+            && challenge.has_unique_parameters()
     })
 }
 

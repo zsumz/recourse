@@ -1,4 +1,4 @@
-//! Packaged Ballast-shaped HTTP fixture exercised externally by Smoque.
+//! Packaged HTTP fixture exercised externally by Smoque.
 
 use std::{
     env,
@@ -24,15 +24,15 @@ use recourse_axum::{HandlerResult, ProblemContext, RecourseLayer};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-const PRIVATE_CANARY: &str = "postgres://private-ballast-token";
+const PRIVATE_CANARY: &str = "postgres://private-smoke-token";
 
 #[derive(Debug)]
-enum BallastCatalog {}
+enum SmokeCatalog {}
 
-impl CatalogSpec for BallastCatalog {
-    const NAME: &'static str = "ballast";
-    const PREFIX: &'static str = "BAL";
-    const TYPE_BASE: &'static str = "https://ballast.invalid/problems/";
+impl CatalogSpec for SmokeCatalog {
+    const NAME: &'static str = "package-smoke";
+    const PREFIX: &'static str = "SMK";
+    const TYPE_BASE: &'static str = "https://example.invalid/problems/";
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -46,7 +46,7 @@ impl PublicEvidence for DeploymentEvidence {}
 enum DeploymentNotFound {}
 
 impl DiagnosticType for DeploymentNotFound {
-    type Catalog = BallastCatalog;
+    type Catalog = SmokeCatalog;
     type Evidence = DeploymentEvidence;
 
     const NUMBER: CodeNumber = CodeNumber::new(1001);
@@ -64,12 +64,12 @@ impl HttpProblemType for DeploymentNotFound {
 enum InternalError {}
 
 impl DiagnosticType for InternalError {
-    type Catalog = BallastCatalog;
+    type Catalog = SmokeCatalog;
     type Evidence = NoEvidence;
 
     const NUMBER: CodeNumber = CodeNumber::new(1002);
     const TITLE: &'static str = "Internal error";
-    const DETAIL: &'static str = "Ballast could not complete the request.";
+    const DETAIL: &'static str = "The example service could not complete the request.";
     const SUGGESTIONS: &'static [&'static str] = &["Retry the request later."];
     const DOCS: &'static str = "Contact support with the request ID.";
 }
@@ -82,7 +82,7 @@ impl HttpProblemType for InternalError {
 enum RegistryAuthenticationRequired {}
 
 impl DiagnosticType for RegistryAuthenticationRequired {
-    type Catalog = BallastCatalog;
+    type Catalog = SmokeCatalog;
     type Evidence = NoEvidence;
 
     const NUMBER: CodeNumber = CodeNumber::new(1003);
@@ -126,13 +126,13 @@ impl FaultReporter for ConsoleHooks {
     }
 }
 
-async fn missing(problems: ProblemContext<BallastCatalog>) -> HandlerResult<&'static str> {
+async fn missing(problems: ProblemContext<SmokeCatalog>) -> HandlerResult<&'static str> {
     Err(problems.problem::<DeploymentNotFound>(DeploymentEvidence {
         deployment_id: "dep_missing".to_owned(),
     }))
 }
 
-async fn fault(problems: ProblemContext<BallastCatalog>) -> HandlerResult<&'static str> {
+async fn fault(problems: ProblemContext<SmokeCatalog>) -> HandlerResult<&'static str> {
     Err(problems.fault::<InternalError>(
         NoEvidence,
         PrivateReport::new(CanaryError).context("database", PRIVATE_CANARY),
@@ -140,13 +140,13 @@ async fn fault(problems: ProblemContext<BallastCatalog>) -> HandlerResult<&'stat
 }
 
 async fn registry_token(
-    problems: ProblemContext<BallastCatalog>,
+    problems: ProblemContext<SmokeCatalog>,
 ) -> HandlerResult<&'static str> {
-    let challenge = BasicChallenge::from_static("ballast-registry");
+    let challenge = BasicChallenge::from_static("registry");
     Err(problems.problem_with::<RegistryAuthenticationRequired>(NoEvidence, challenge))
 }
 
-async fn stream_failure(problems: ProblemContext<BallastCatalog>) -> Response {
+async fn stream_failure(problems: ProblemContext<SmokeCatalog>) -> Response {
     let failure = problems.problem::<DeploymentNotFound>(DeploymentEvidence {
         deployment_id: "dep_stream".to_owned(),
     });
@@ -171,7 +171,7 @@ async fn ready() -> &'static str {
 }
 
 fn app() -> Result<Router, Box<dyn Error>> {
-    let catalog = Catalog::<BallastCatalog>::builder()
+    let catalog = Catalog::<SmokeCatalog>::builder()
         .problem::<DeploymentNotFound>()
         .problem::<InternalError>()
         .problem::<RegistryAuthenticationRequired>()

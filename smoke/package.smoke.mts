@@ -1,6 +1,6 @@
 import { expect, smoke } from "smoque";
 
-const PRIVATE_CANARY = "postgres://private-ballast-token";
+const PRIVATE_CANARY = "postgres://private-smoke-token";
 
 smoke.suite("packaged external consumer", { tags: ["package", "http"] }, async (t) => {
   const root = t.repoRoot();
@@ -11,7 +11,7 @@ smoke.suite("packaged external consumer", { tags: ["package", "http"] }, async (
   const consumer = work.path("consumer");
 
   await t.step("prepare extracted-package consumer", async () => {
-    await t.fs.copy(root.path("smoke/ballast-consumer"), consumer);
+    await t.fs.copy(root.path("smoke/package-consumer"), consumer);
     const template = await t.fs.readText(`${consumer}/Cargo.toml.template`);
     const manifest = template
       .replaceAll("@RECOURSE_PATH@", core.toString())
@@ -36,40 +36,40 @@ smoke.suite("packaged external consumer", { tags: ["package", "http"] }, async (
 
   await t.step("public Problem crosses the real HTTP boundary", async () => {
     const response = await t.http.get(port.url("/deployments/dep_missing"), {
-      headers: { "x-request-id": "ballast-smoke-request" },
+      headers: { "x-request-id": "package-smoke-request" },
     });
 
     response
       .expectStatus(404)
       .expectHeader("content-type").toBe("application/problem+json")
-      .expectHeader("x-request-id").toBe("ballast-smoke-request")
-      .expectJsonPath("$.type").toBe("https://ballast.invalid/problems/BAL-1001")
-      .expectJsonPath("$.code").toBe("BAL-1001")
+      .expectHeader("x-request-id").toBe("package-smoke-request")
+      .expectJsonPath("$.type").toBe("https://example.invalid/problems/SMK-1001")
+      .expectJsonPath("$.code").toBe("SMK-1001")
       .expectJsonPath("$.status").toBe(404)
       .expectJsonPath("$.evidence.deployment_id").toBe("dep_missing");
   });
 
   await t.step("private fault detail stays off the public wire", async () => {
     const response = await t.http.get(port.url("/fault"), {
-      headers: { "x-request-id": "ballast-fault-request" },
+      headers: { "x-request-id": "package-fault-request" },
     });
 
-    response.expectStatus(500).expectJsonPath("$.code").toBe("BAL-1002");
+    response.expectStatus(500).expectJsonPath("$.code").toBe("SMK-1002");
     expect.value(response.body.includes(PRIVATE_CANARY)).toBe(false);
     expect.value(service.stderr()).toContain(`private-report: ${PRIVATE_CANARY}`);
   });
 
   await t.step("Basic registry challenge crosses the real HTTP boundary", async () => {
     const response = await t.http.get(port.url("/registry/token"), {
-      headers: { "x-request-id": "ballast-registry-request" },
+      headers: { "x-request-id": "package-auth-request" },
     });
 
     response
       .expectStatus(401)
       .expectHeader("content-type").toBe("application/problem+json")
-      .expectHeader("www-authenticate").toBe('Basic realm="ballast-registry"')
-      .expectHeader("x-request-id").toBe("ballast-registry-request")
-      .expectJsonPath("$.code").toBe("BAL-1003")
+      .expectHeader("www-authenticate").toBe('Basic realm="registry"')
+      .expectHeader("x-request-id").toBe("package-auth-request")
+      .expectJsonPath("$.code").toBe("SMK-1003")
       .expectJsonPath("$.status").toBe(401);
   });
 
@@ -84,9 +84,9 @@ smoke.suite("packaged external consumer", { tags: ["package", "http"] }, async (
       t.fail("SSE response omitted its Problem data frame");
     }
     const problem = JSON.parse(data) as Record<string, unknown>;
-    expect.value(problem.code).toBe("BAL-1001");
+    expect.value(problem.code).toBe("SMK-1001");
     expect.value(problem.status).toBe(404);
-    expect.value(service.stdout()).toContain("observed-problem: BAL-1001");
+    expect.value(service.stdout()).toContain("observed-problem: SMK-1001");
   });
 });
 

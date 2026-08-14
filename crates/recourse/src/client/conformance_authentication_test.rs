@@ -85,7 +85,11 @@ fn basic_and_bearer_contracts_accept_their_case_insensitive_schemes() {
     ] {
         assert_conformant::<BasicRequired>(1, &headers(&[value]));
     }
-    for value in ["Bearer", "bEaReR realm=\"registry\""] {
+    for value in [
+        "bEaReR realm=\"registry\"",
+        "Bearer scope=\"repository:team/image:pull\"",
+        "Bearer extension=accepted",
+    ] {
         assert_conformant::<BearerRequired>(2, &headers(&[value]));
     }
 }
@@ -108,9 +112,24 @@ fn malformed_or_incomplete_basic_challenges_are_mismatches() {
         "Basic realm=\"registry\", charset=\"latin-1\"",
         "Basic realm=\"registry\", charset=",
         "Basic realm=\"first\", realm=\"second\"",
+        "Basic realm=\"first\", REALM=\"second\"",
         "Basic realm=\"registry\", charset=UTF-8, charset=UTF-8",
+        "Basic realm=\"registry\", extension=one, EXTENSION=two",
     ] {
         assert_mismatch::<BasicRequired>(1, &headers(&[value]));
+    }
+}
+
+#[test]
+fn bearer_requires_one_unique_authentication_parameter() {
+    for value in [
+        "Bearer",
+        "Bearer YWJjZA==",
+        "Bearer realm=\"first\", realm=\"second\"",
+        "Bearer scope=\"pull\", SCOPE=\"push\"",
+        "Bearer extension=one, EXTENSION=two",
+    ] {
+        assert_mismatch::<BearerRequired>(2, &headers(&[value]));
     }
 }
 

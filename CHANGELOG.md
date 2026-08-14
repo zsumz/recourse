@@ -15,7 +15,8 @@ ship as one versioned cohort.
 
 - receive-side catalog classification and typed access now reject malformed or
   wrong-scheme authentication challenges instead of treating header presence
-  alone as policy conformance.
+  alone as policy conformance, including parameterless Bearer challenges and
+  challenges with duplicate parameter names.
 
 ## [0.0.1-rc.2] - 2026-08-13
 

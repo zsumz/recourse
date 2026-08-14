@@ -90,7 +90,7 @@ fn typed_policy_inputs_reach_final_response_headers() {
     let Some(methods) = AllowedMethods::new([Method::GET, Method::HEAD]).ok() else {
         return;
     };
-    let Some(registry_challenge) = BasicChallenge::new("ballast-registry").ok() else {
+    let Some(registry_challenge) = BasicChallenge::new("registry").ok() else {
         return;
     };
     let unauthorized = catalog
@@ -127,7 +127,7 @@ fn typed_policy_inputs_reach_final_response_headers() {
             && value
                 .headers()
                 .get(WWW_AUTHENTICATE)
-                .is_some_and(|header| header == "Basic realm=\"ballast-registry\"")
+                .is_some_and(|header| header == "Basic realm=\"registry\"")
     }));
     assert!(retry.is_some_and(|value| value.headers().get(RETRY_AFTER).is_some_and(|v| v == "30")));
 }

@@ -4,6 +4,7 @@ mod basic;
 mod bearer;
 mod challenge;
 mod grammar;
+mod parameter;
 mod realm;
 mod response;
 

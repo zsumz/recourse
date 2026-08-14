@@ -14,8 +14,8 @@ fn authentication_header<P: HttpPolicy>(input: P::Input) -> Option<HeaderValue> 
 }
 
 #[test]
-fn basic_unauthorized_emits_the_ballast_registry_challenge() {
-    let Some(challenge) = BasicChallenge::new("ballast-registry").ok() else {
+fn basic_unauthorized_emits_the_registry_challenge() {
+    let Some(challenge) = BasicChallenge::new("registry").ok() else {
         return;
     };
     let headers = BasicUnauthorized::headers(challenge);
@@ -28,9 +28,7 @@ fn basic_unauthorized_emits_the_ballast_registry_challenge() {
             && headers
                 .get_all(WWW_AUTHENTICATE)
                 .iter()
-                .eq([&HeaderValue::from_static(
-                    "Basic realm=\"ballast-registry\"",
-                )])
+                .eq([&HeaderValue::from_static("Basic realm=\"registry\"")])
     }));
 }
 
