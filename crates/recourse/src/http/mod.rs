@@ -13,9 +13,9 @@ pub use occurrence::{
 };
 pub(crate) use policy::mandatory_headers;
 pub use policy::{
-    AllowedMethods, AllowedMethodsError, BearerChallenge, BearerChallengeError, BearerUnauthorized,
-    Fixed, HttpPolicy, HttpProblemType, MethodNotAllowed, PolicyError, RetryAfter, RetryAfterError,
-    RetryAfterPolicy,
+    AllowedMethods, AllowedMethodsError, BasicChallenge, BasicChallengeError, BasicUnauthorized,
+    BearerChallenge, BearerChallengeError, BearerUnauthorized, Fixed, HttpPolicy, HttpProblemType,
+    MethodNotAllowed, PolicyError, RetryAfter, RetryAfterError, RetryAfterPolicy,
 };
 pub use problem::{Problem, ProblemBuildError, ProblemEncodeError};
 pub use uri_reference::{UriReference, UriReferenceError};
@@ -24,6 +24,8 @@ pub use uri_reference::{UriReference, UriReferenceError};
 mod encoded_test;
 #[cfg(test)]
 mod occurrence_test;
+#[cfg(test)]
+mod policy_authentication_test;
 #[cfg(test)]
 mod policy_header_test;
 #[cfg(test)]

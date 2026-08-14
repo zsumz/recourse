@@ -4,39 +4,13 @@ use std::time::{Duration, UNIX_EPOCH};
 
 use http::{
     Method,
-    header::{ALLOW, RETRY_AFTER, WWW_AUTHENTICATE},
+    header::{ALLOW, RETRY_AFTER},
 };
 
 use super::{
-    AllowedMethods, AllowedMethodsError, BearerChallenge, BearerChallengeError, BearerUnauthorized,
-    HttpPolicy, MethodNotAllowed, RetryAfter, RetryAfterError, RetryAfterPolicy,
+    AllowedMethods, AllowedMethodsError, HttpPolicy, MethodNotAllowed, RetryAfter, RetryAfterError,
+    RetryAfterPolicy,
 };
-
-#[test]
-fn unauthorized_emits_one_escaped_bearer_challenge() {
-    let challenge = BearerChallenge::new("dispatch \"jobs\"");
-    let Some(challenge) = challenge.ok() else {
-        return;
-    };
-    let headers = BearerUnauthorized::headers(challenge);
-
-    assert_eq!(
-        headers
-            .ok()
-            .and_then(|value| value.get(WWW_AUTHENTICATE).cloned()),
-        Some(http::HeaderValue::from_static(
-            "Bearer realm=\"dispatch \\\"jobs\\\"\""
-        ))
-    );
-    assert_eq!(
-        BearerChallenge::new(""),
-        Err(BearerChallengeError::EmptyRealm)
-    );
-    assert!(matches!(
-        BearerChallenge::new("dispatch\n"),
-        Err(BearerChallengeError::InvalidByte { .. })
-    ));
-}
 
 #[test]
 fn method_not_allowed_sorts_and_deduplicates_allow_values() {

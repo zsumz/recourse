@@ -13,8 +13,9 @@ use crate::{
 };
 
 use super::{
-    AllowedMethods, BearerChallenge, BearerUnauthorized, CorrelationId, HttpProblemType,
-    MethodNotAllowed, ProblemOccurrence, RetryAfter, RetryAfterPolicy,
+    AllowedMethods, BasicChallenge, BasicUnauthorized, BearerChallenge, BearerUnauthorized,
+    CorrelationId, HttpProblemType, MethodNotAllowed, ProblemOccurrence, RetryAfter,
+    RetryAfterPolicy,
 };
 
 #[derive(Debug)]
@@ -51,12 +52,14 @@ macro_rules! diagnostic {
 diagnostic!(AuthenticationRequired, 1, BearerUnauthorized);
 diagnostic!(UnsupportedMethod, 2, MethodNotAllowed);
 diagnostic!(Unavailable, 3, RetryAfterPolicy<503>);
+diagnostic!(RegistryAuthenticationRequired, 4, BasicUnauthorized);
 
 fn catalog() -> Option<Catalog<PolicyCatalog>> {
     Catalog::<PolicyCatalog>::builder()
         .problem::<AuthenticationRequired>()
         .problem::<UnsupportedMethod>()
         .problem::<Unavailable>()
+        .problem::<RegistryAuthenticationRequired>()
         .build()
         .ok()
 }
@@ -74,10 +77,20 @@ fn typed_policy_inputs_reach_final_response_headers() {
     let (Some(catalog), Some(occurrence)) = (catalog(), occurrence()) else {
         return;
     };
+    assert!(catalog.artifact().diagnostics().iter().any(|diagnostic| {
+        diagnostic.number() == CodeNumber::new(4)
+            && diagnostic.http_policy() == Some("basic_unauthorized")
+            && diagnostic
+                .required_headers()
+                .is_some_and(|headers| headers == ["www-authenticate"])
+    }));
     let Some(challenge) = BearerChallenge::new("dispatch").ok() else {
         return;
     };
     let Some(methods) = AllowedMethods::new([Method::GET, Method::HEAD]).ok() else {
+        return;
+    };
+    let Some(registry_challenge) = BasicChallenge::new("ballast-registry").ok() else {
         return;
     };
     let unauthorized = catalog
@@ -86,6 +99,14 @@ fn typed_policy_inputs_reach_final_response_headers() {
         .and_then(|problem| problem.try_encode().ok());
     let method = catalog
         .try_problem_with::<UnsupportedMethod>(occurrence.clone(), NoEvidence, methods)
+        .ok()
+        .and_then(|problem| problem.try_encode().ok());
+    let registry = catalog
+        .try_problem_with::<RegistryAuthenticationRequired>(
+            occurrence.clone(),
+            NoEvidence,
+            registry_challenge,
+        )
         .ok()
         .and_then(|problem| problem.try_encode().ok());
     let retry = catalog
@@ -101,5 +122,12 @@ fn typed_policy_inputs_reach_final_response_headers() {
         value.status() == StatusCode::UNAUTHORIZED && value.headers().contains_key(WWW_AUTHENTICATE)
     }));
     assert!(method.is_some_and(|value| value.headers().contains_key(ALLOW)));
+    assert!(registry.is_some_and(|value| {
+        value.status() == StatusCode::UNAUTHORIZED
+            && value
+                .headers()
+                .get(WWW_AUTHENTICATE)
+                .is_some_and(|header| header == "Basic realm=\"ballast-registry\"")
+    }));
     assert!(retry.is_some_and(|value| value.headers().get(RETRY_AFTER).is_some_and(|v| v == "30")));
 }

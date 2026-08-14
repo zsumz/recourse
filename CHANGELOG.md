@@ -3,6 +3,14 @@
 All notable changes to Recourse are documented here. The three public crates
 ship as one versioned cohort.
 
+## [Unreleased]
+
+### Added
+
+- validated RFC 7617 Basic authentication challenges, including the optional
+  UTF-8 credential-encoding advertisement, behind a sealed `BasicUnauthorized`
+  policy.
+
 ## [0.0.1-rc.2] - 2026-08-13
 
 ### Migrating from rc.1
@@ -71,5 +79,6 @@ ship as one versioned cohort.
 - First public preview of the framework-neutral core, Axum adapter, Cargo CLI,
   catalog lifecycle, and Dispatch reference system.
 
+[Unreleased]: https://github.com/zsumz/recourse/compare/v0.0.1-rc.2...HEAD
 [0.0.1-rc.2]: https://github.com/zsumz/recourse/compare/v0.0.1-rc.1...v0.0.1-rc.2
 [0.0.1-rc.1]: https://github.com/zsumz/recourse/releases/tag/v0.0.1-rc.1

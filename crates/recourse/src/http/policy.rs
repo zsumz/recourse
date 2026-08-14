@@ -1,5 +1,6 @@
 //! Sealed policy metadata that keeps status selection catalog-governed.
 
+mod authentication;
 mod header;
 mod mandatory;
 mod retry;
@@ -13,10 +14,11 @@ use http::HeaderMap;
 
 use crate::diagnostic::DiagnosticType;
 
-pub use header::{
-    AllowedMethods, AllowedMethodsError, BearerChallenge, BearerChallengeError, BearerUnauthorized,
-    MethodNotAllowed,
+pub use authentication::{
+    BasicChallenge, BasicChallengeError, BasicUnauthorized, BearerChallenge, BearerChallengeError,
+    BearerUnauthorized,
 };
+pub use header::{AllowedMethods, AllowedMethodsError, MethodNotAllowed};
 pub(crate) use mandatory::mandatory_headers;
 pub use retry::{RetryAfter, RetryAfterError, RetryAfterPolicy};
 

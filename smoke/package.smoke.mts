@@ -59,6 +59,20 @@ smoke.suite("packaged external consumer", { tags: ["package", "http"] }, async (
     expect.value(service.stderr()).toContain(`private-report: ${PRIVATE_CANARY}`);
   });
 
+  await t.step("Basic registry challenge crosses the real HTTP boundary", async () => {
+    const response = await t.http.get(port.url("/registry/token"), {
+      headers: { "x-request-id": "ballast-registry-request" },
+    });
+
+    response
+      .expectStatus(401)
+      .expectHeader("content-type").toBe("application/problem+json")
+      .expectHeader("www-authenticate").toBe('Basic realm="ballast-registry"')
+      .expectHeader("x-request-id").toBe("ballast-registry-request")
+      .expectJsonPath("$.code").toBe("BAL-1003")
+      .expectJsonPath("$.status").toBe(401);
+  });
+
   await t.step("started stream emits a final encoded Problem frame", async () => {
     const response = await t.http.get(port.url("/stream"));
     response.expectStatus(200).expectHeader("content-type").matching(/^text\/event-stream/u);

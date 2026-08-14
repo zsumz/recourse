@@ -6,7 +6,7 @@
 use recourse::{
     dependencies::http::{Method, header::ALLOW},
     diagnostic::PublicText,
-    http::{AllowedMethods, BearerChallenge, HttpPolicy, MethodNotAllowed},
+    http::{AllowedMethods, BasicChallenge, BearerChallenge, HttpPolicy, MethodNotAllowed},
     validation::{HeaderName, JsonPointer, ParameterName},
 };
 
@@ -17,6 +17,7 @@ const ESCAPED_POINTER: JsonPointer = JsonPointer::from_static("/a~0b/c~1d");
 const PARAMETER: ParameterName = ParameterName::from_static("job_id");
 const FIELD: HeaderName = HeaderName::from_static("idempotency-key");
 const CHALLENGE: BearerChallenge = BearerChallenge::from_static("dispatch");
+const BASIC_CHALLENGE: BasicChallenge = BasicChallenge::from_static("registry").with_utf8();
 const ALLOWED: AllowedMethods = AllowedMethods::from_static(&[Method::POST]);
 
 #[test]
@@ -61,6 +62,12 @@ fn the_literal_field_name_cap_is_the_runtime_field_name_cap() {
 #[test]
 fn literal_policy_inputs_equal_their_validated_values() {
     assert_eq!(BearerChallenge::new("dispatch").ok(), Some(CHALLENGE));
+    assert_eq!(
+        BasicChallenge::new("registry")
+            .map(BasicChallenge::with_utf8)
+            .ok(),
+        Some(BASIC_CHALLENGE)
+    );
     assert_eq!(AllowedMethods::new([Method::POST]).ok(), Some(ALLOWED));
 }
 

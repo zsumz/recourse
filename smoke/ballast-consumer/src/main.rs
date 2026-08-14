@@ -17,7 +17,7 @@ use recourse::{
     catalog::{Catalog, CatalogSpec, CodeNumber},
     diagnostic::{DiagnosticType, NoEvidence, PublicEvidence},
     fault::PrivateReport,
-    http::{Fixed, HttpProblemType},
+    http::{BasicChallenge, BasicUnauthorized, Fixed, HttpProblemType},
     observe::{FaultEvent, FaultReporter, HttpObserver, ProblemEvent},
 };
 use recourse_axum::{HandlerResult, ProblemContext, RecourseLayer};
@@ -79,6 +79,24 @@ impl HttpProblemType for InternalError {
 }
 
 #[derive(Debug)]
+enum RegistryAuthenticationRequired {}
+
+impl DiagnosticType for RegistryAuthenticationRequired {
+    type Catalog = BallastCatalog;
+    type Evidence = NoEvidence;
+
+    const NUMBER: CodeNumber = CodeNumber::new(1003);
+    const TITLE: &'static str = "Registry authentication required";
+    const DETAIL: &'static str = "Valid registry credentials are required.";
+    const SUGGESTIONS: &'static [&'static str] = &["Provide registry credentials."];
+    const DOCS: &'static str = "Authenticate with the registry token exchange.";
+}
+
+impl HttpProblemType for RegistryAuthenticationRequired {
+    type Policy = BasicUnauthorized;
+}
+
+#[derive(Debug)]
 struct CanaryError;
 
 impl Display for CanaryError {
@@ -121,6 +139,13 @@ async fn fault(problems: ProblemContext<BallastCatalog>) -> HandlerResult<&'stat
     ))
 }
 
+async fn registry_token(
+    problems: ProblemContext<BallastCatalog>,
+) -> HandlerResult<&'static str> {
+    let challenge = BasicChallenge::from_static("ballast-registry");
+    Err(problems.problem_with::<RegistryAuthenticationRequired>(NoEvidence, challenge))
+}
+
 async fn stream_failure(problems: ProblemContext<BallastCatalog>) -> Response {
     let failure = problems.problem::<DeploymentNotFound>(DeploymentEvidence {
         deployment_id: "dep_stream".to_owned(),
@@ -149,6 +174,7 @@ fn app() -> Result<Router, Box<dyn Error>> {
     let catalog = Catalog::<BallastCatalog>::builder()
         .problem::<DeploymentNotFound>()
         .problem::<InternalError>()
+        .problem::<RegistryAuthenticationRequired>()
         .build()?;
     let layer = RecourseLayer::builder(catalog)
         .internal::<InternalError>()
@@ -159,6 +185,7 @@ fn app() -> Result<Router, Box<dyn Error>> {
         .route("/ready", get(ready))
         .route("/deployments/{id}", get(missing))
         .route("/fault", get(fault))
+        .route("/registry/token", get(registry_token))
         .route("/stream", get(stream_failure))
         .layer(layer))
 }
