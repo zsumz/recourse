@@ -1,5 +1,5 @@
 schema = 1
-version = "0.0.1-rc.2"
+version = "0.0.1-rc.3"
 
 # Order is the only supported crates.io publication order.
 [[package]]

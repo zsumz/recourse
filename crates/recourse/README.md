@@ -5,7 +5,7 @@ Rust services.
 
 ```toml
 [dependencies]
-recourse = "=0.0.1-rc.2"
+recourse = "=0.0.1-rc.3"
 ```
 
 It provides:

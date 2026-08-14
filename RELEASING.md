@@ -25,11 +25,11 @@ API snapshot expected by source-SemVer CI. The target is the reviewed API
 commit, not the moving branch head:
 
 ```sh
-git tag -s api/v0.0.1-rc.2 79458399d2dcf00972817cc2db490c85e6d7861f \
-  -m "recourse api v0.0.1-rc.2"
-test "$(git rev-parse 'api/v0.0.1-rc.2^{commit}')" = \
-  79458399d2dcf00972817cc2db490c85e6d7861f
-git push origin api/v0.0.1-rc.2
+git tag -s api/v0.0.1-rc.3 c14b100c4dae2c859520fbdf427dbb785c9b0990 \
+  -m "recourse api v0.0.1-rc.3"
+test "$(git rev-parse 'api/v0.0.1-rc.3^{commit}')" = \
+  c14b100c4dae2c859520fbdf427dbb785c9b0990
+git push origin api/v0.0.1-rc.3
 ```
 
 Do not move or recreate an API snapshot tag. A later API baseline gets a new
@@ -48,9 +48,9 @@ Create the signed annotated tag that exactly matches `release.toml`, then push
 the reviewed commit and tag:
 
 ```sh
-git tag -s v0.0.1-rc.2 -m "recourse v0.0.1-rc.2"
+git tag -s v0.0.1-rc.3 -m "recourse v0.0.1-rc.3"
 git push origin main
-git push origin v0.0.1-rc.2
+git push origin v0.0.1-rc.3
 ```
 
 ## Publish to crates.io
@@ -72,7 +72,7 @@ After all three packages are visible on crates.io, dispatch the release
 workflow from `main`:
 
 ```sh
-gh workflow run release.yml --ref main -f tag=v0.0.1-rc.2
+gh workflow run release.yml --ref main -f tag=v0.0.1-rc.3
 ```
 
 The workflow keeps two checkouts: the exact `main` revision that supplied the

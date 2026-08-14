@@ -102,8 +102,8 @@ fn latest_stable_lane_complements_the_msrv_gate() {
 #[test]
 fn source_semver_gate_checks_the_frozen_rc_api() {
     let workflow = read(&workspace_root().join(".github/workflows/ci.yml"));
-    let baseline_tag = "api/v0.0.1-rc.2";
-    let baseline_commit = "79458399d2dcf00972817cc2db490c85e6d7861f";
+    let baseline_tag = "api/v0.0.1-rc.3";
+    let baseline_commit = "c14b100c4dae2c859520fbdf427dbb785c9b0990";
 
     for required in [
         "source-semver:",
@@ -111,8 +111,8 @@ fn source_semver_gate_checks_the_frozen_rc_api() {
         "cargo-semver-checks --version 0.49.0 --locked",
         "cargo semver-checks --package recourse\n",
         "cargo semver-checks --package recourse-axum\n",
-        "git cat-file -t refs/tags/api/v0.0.1-rc.2",
-        "git rev-parse 'api/v0.0.1-rc.2^{commit}'",
+        "git cat-file -t refs/tags/api/v0.0.1-rc.3",
+        "git rev-parse 'api/v0.0.1-rc.3^{commit}'",
         baseline_commit,
     ] {
         assert!(

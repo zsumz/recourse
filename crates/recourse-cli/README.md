@@ -5,7 +5,7 @@ catalog artifacts without compiling or executing application code. Cargo
 invokes that binary as its `recourse` subcommand.
 
 ```console
-cargo install recourse-cli --version 0.0.1-rc.2 --locked
+cargo install recourse-cli --version 0.0.1-rc.3 --locked
 cargo recourse --help
 ```
 

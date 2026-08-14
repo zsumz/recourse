@@ -37,13 +37,13 @@
 Pin release candidates exactly:
 
 ```sh
-cargo add recourse@=0.0.1-rc.2
+cargo add recourse@=0.0.1-rc.3
 ```
 
 Add the Axum adapter only at the application boundary:
 
 ```sh
-cargo add recourse-axum@=0.0.1-rc.2
+cargo add recourse-axum@=0.0.1-rc.3
 ```
 
 The core package has no async runtime or application-framework dependency.
@@ -96,7 +96,7 @@ The full registration and handler are
 initial catalog once:
 
 ```sh
-cargo install recourse-cli --version 0.0.1-rc.2 --locked
+cargo install recourse-cli --version 0.0.1-rc.3 --locked
 cargo run -p dispatch-catalog > diagnostics/catalog.json
 cargo recourse accept \
   --current diagnostics/catalog.json \
@@ -218,7 +218,7 @@ Installing `recourse-cli` provides the `cargo-recourse` binary and the
 `cargo recourse` subcommand:
 
 ```sh
-cargo install recourse-cli --version 0.0.1-rc.2 --locked
+cargo install recourse-cli --version 0.0.1-rc.3 --locked
 cargo recourse check --current diagnostics/catalog.json --lock diagnostics/catalog.lock
 cargo recourse explain --current diagnostics/catalog.json DSP-1003
 ```

@@ -9,7 +9,7 @@ const PUBLIC_PACKAGES: [(&str, &str); 3] = [
     ("recourse-axum", "crates/recourse-axum"),
     ("recourse-cli", "crates/recourse-cli"),
 ];
-const RELEASE_VERSION: &str = "0.0.1-rc.2";
+const RELEASE_VERSION: &str = "0.0.1-rc.3";
 
 #[test]
 fn release_inventory_matches_public_manifests() {

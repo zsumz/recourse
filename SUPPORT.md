@@ -7,8 +7,8 @@ release candidates are retained as history but are not maintained. RC users
 should pin all three public crates to one exact cohort, for example:
 
 ```toml
-recourse = "=0.0.1-rc.2"
-recourse-axum = "=0.0.1-rc.2"
+recourse = "=0.0.1-rc.3"
+recourse-axum = "=0.0.1-rc.3"
 ```
 
 Breaking source changes may occur between release candidates and will be called

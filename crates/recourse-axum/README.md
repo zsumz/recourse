@@ -6,8 +6,8 @@ versioned failure contracts.
 ```toml
 [dependencies]
 axum = "0.8"
-recourse = "=0.0.1-rc.2"
-recourse-axum = "=0.0.1-rc.2"
+recourse = "=0.0.1-rc.3"
+recourse-axum = "=0.0.1-rc.3"
 ```
 
 The layer owns request correlation, request-scoped `ProblemContext`, panic and
